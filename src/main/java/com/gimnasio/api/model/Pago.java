@@ -62,7 +62,7 @@ public class Pago {
 
     // Para que el JSON muestre "socioId" en lugar de todo el objeto socio
     @JsonProperty("socioId")
-    public Long getSocioId() {
+    public Long SocioId() {
         return socio != null ? socio.getId() : null;
     }
 
