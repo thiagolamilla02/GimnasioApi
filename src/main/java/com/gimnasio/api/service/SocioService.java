@@ -1,5 +1,6 @@
 package com.gimnasio.api.service;
 
+import com.gimnasio.api.dto.SocioEstadoResponse;
 import com.gimnasio.api.exception.DniDuplicadoException;
 import com.gimnasio.api.exception.SocioConPagosException;
 import com.gimnasio.api.exception.SocioNoEncontradoException;
@@ -10,6 +11,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.gimnasio.api.dto.UltimoPagoDto;
+import java.time.temporal.ChronoUnit;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -108,5 +113,49 @@ public class SocioService implements ISocioService {
                 throw new DniDuplicadoException(dni);
             }
         });
+    }
+
+    @Override
+    public List<SocioEstadoResponse> getSociosConEstado() {
+        LocalDate mesActual = LocalDate.now(ZONA).withDayOfMonth(1);
+
+        // Una sola consulta: ultimo mes pagado de cada socio
+        Map<Long, LocalDate> ultimoPorSocio = pagoRepo.findUltimoPagoPorSocio().stream()
+                .collect(Collectors.toMap(UltimoPagoDto::socioId, UltimoPagoDto::ultimoMes));
+
+        return getSocios().stream()
+                .map(socio -> armarEstado(socio, ultimoPorSocio.get(socio.getId()), mesActual))
+                .toList();
+    }
+
+    private SocioEstadoResponse armarEstado(Socio socio, LocalDate ultimoMesPagado, LocalDate mesActual) {
+        long mesesAdeudados = 0;
+
+        if (socio.isActivo()) {
+            // Primer mes que todavia no cubrio: el siguiente a su ultimo pago,
+            // o el mes en que se dio de alta si nunca pago
+            LocalDate primerMesImpago;
+            if (ultimoMesPagado != null) {
+                primerMesImpago = ultimoMesPagado.plusMonths(1);
+            } else if (socio.getFechaAlta() != null) {
+                primerMesImpago = socio.getFechaAlta().withDayOfMonth(1);
+            } else {
+                primerMesImpago = mesActual;
+            }
+
+            mesesAdeudados = Math.max(0L, ChronoUnit.MONTHS.between(primerMesImpago, mesActual) + 1);
+        }
+
+        return new SocioEstadoResponse(
+                socio.getId(),
+                socio.getApellidos(),
+                socio.getNombres(),
+                socio.getDni(),
+                socio.getTelefono(),
+                socio.isActivo(),
+                ultimoMesPagado,
+                mesesAdeudados > 0,
+                mesesAdeudados
+        );
     }
 }

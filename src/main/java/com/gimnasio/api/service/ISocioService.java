@@ -1,5 +1,6 @@
 package com.gimnasio.api.service;
 
+import com.gimnasio.api.dto.SocioEstadoResponse;
 import com.gimnasio.api.model.Socio;
 
 import java.util.List;
@@ -25,6 +26,10 @@ public interface ISocioService {
 
     //volver a dar de alta a un socio que estaba de baja
     public void altaSocio(Long id);
+
     //dar de baja a un socio que estaba de alta
     public void bajaSocio(Long id);
+
+    //lista de socios con su estado de cuota (debe / al dia)
+    public List<SocioEstadoResponse> getSociosConEstado();
 }

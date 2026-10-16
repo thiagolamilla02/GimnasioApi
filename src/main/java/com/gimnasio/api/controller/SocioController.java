@@ -1,5 +1,6 @@
 package com.gimnasio.api.controller;
 
+import com.gimnasio.api.dto.SocioEstadoResponse;
 import com.gimnasio.api.model.Socio;
 import com.gimnasio.api.service.ISocioService;
 import jakarta.validation.Valid;
@@ -16,6 +17,11 @@ public class SocioController {
 
     @Autowired
     private ISocioService iSocioServ;
+
+    @GetMapping("/estado")
+    public List<SocioEstadoResponse> getSociosConEstado() {
+        return iSocioServ.getSociosConEstado();
+    }
 
     @GetMapping
     public List<Socio> getSocios() {
