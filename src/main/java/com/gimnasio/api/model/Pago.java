@@ -22,13 +22,11 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+
+@Entity
+@Table(name = "pagos", uniqueConstraints = @UniqueConstraint(columnNames = {"socio_id", "mes_pagado"}))
 @Getter
 @Setter
-@Entity
-@Table(
-        name = "pagos",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"socio_id", "mes_pagado"})
-)
 public class Pago {
 
     public enum MedioPago {

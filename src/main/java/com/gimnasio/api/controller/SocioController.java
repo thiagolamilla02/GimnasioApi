@@ -5,15 +5,7 @@ import com.gimnasio.api.service.ISocioService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.util.List;
@@ -48,10 +40,11 @@ public class SocioController {
         return iSocioServ.FindSocio(id); // devolvemos el socio ya actualizado
     }
 
-    // borra el socio
+    // borra el socio y los pagos
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteSocio(@PathVariable Long id) {
-        iSocioServ.deleteSocio(id);
+    public ResponseEntity<Void> deleteSocio(@PathVariable Long id,
+                                            @RequestParam(defaultValue = "false") boolean eliminarPagos) {
+        iSocioServ.deleteSocio(id, eliminarPagos);
         return ResponseEntity.noContent().build();
     }
 

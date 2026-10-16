@@ -17,8 +17,8 @@ public interface ISocioService {
     //alta
     public void saveSocio(Socio socio);
 
-    //borrar
-    public void deleteSocio(Long id);
+    //eliminacion definitiva (si tiene pagos, solo se borra con eliminarPagos = true)
+    public void deleteSocio(Long id, boolean eliminarPagos);
 
     //modificacion/edicion
     public void updateSocio(Long id, Socio datos);

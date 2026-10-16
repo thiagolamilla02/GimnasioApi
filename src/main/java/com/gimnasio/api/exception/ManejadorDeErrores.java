@@ -33,4 +33,19 @@ public class ManejadorDeErrores {
         respuesta.setProperty("errores", errores);
         return respuesta;
     }
+
+    @ExceptionHandler(PagoDuplicadoException.class)
+    public ProblemDetail pagoDuplicado(PagoDuplicadoException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(PagoNoEncontradoException.class)
+    public ProblemDetail pagoNoEncontrado(PagoNoEncontradoException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(SocioConPagosException.class)
+    public ProblemDetail socioConPagos(SocioConPagosException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
 }

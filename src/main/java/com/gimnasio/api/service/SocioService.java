@@ -1,8 +1,10 @@
 package com.gimnasio.api.service;
 
 import com.gimnasio.api.exception.DniDuplicadoException;
+import com.gimnasio.api.exception.SocioConPagosException;
 import com.gimnasio.api.exception.SocioNoEncontradoException;
 import com.gimnasio.api.model.Socio;
+import com.gimnasio.api.repository.IPagoRepository;
 import com.gimnasio.api.repository.ISocioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
@@ -20,6 +22,9 @@ public class SocioService implements ISocioService {
 
     @Autowired
     ISocioRepository socioRepo;
+
+    @Autowired
+    IPagoRepository pagoRepo;
 
     @Override
     public List<Socio> getSocios() {
@@ -46,9 +51,17 @@ public class SocioService implements ISocioService {
 
     @Override
     @Transactional
-    public void deleteSocio(Long id) {
-        Socio socio = FindSocio(id);      // si no existe, lanza el 404
-        socioRepo.delete(socio);    // borrado definitivo
+    public void deleteSocio(Long id, boolean eliminarPagos) {
+        Socio socio = FindSocio(id); // 404 si no existe
+
+        if (pagoRepo.existsBySocioId(id)) {
+            if (!eliminarPagos) {
+                throw new SocioConPagosException(id);
+            }
+            pagoRepo.deleteBySocioId(id); // primero los pagos...
+        }
+
+        socioRepo.delete(socio);    // ...y despues el socio
     }
 
     @Override
