@@ -2,6 +2,7 @@ package com.gimnasio.api.service;
 
 import com.gimnasio.api.dto.SocioEstadoResponse;
 import com.gimnasio.api.exception.DniDuplicadoException;
+import com.gimnasio.api.exception.ParametroInvalidoException;
 import com.gimnasio.api.exception.SocioConPagosException;
 import com.gimnasio.api.exception.SocioNoEncontradoException;
 import com.gimnasio.api.model.Socio;
@@ -12,8 +13,13 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.gimnasio.api.dto.UltimoPagoDto;
+
+import java.text.Normalizer;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import java.time.LocalDate;
@@ -116,15 +122,23 @@ public class SocioService implements ISocioService {
     }
 
     @Override
-    public List<SocioEstadoResponse> getSociosConEstado() {
+    public List<SocioEstadoResponse> getSociosConEstado(String buscar, String filtro, String orden) {
         LocalDate mesActual = LocalDate.now(ZONA).withDayOfMonth(1);
 
         // Una sola consulta: ultimo mes pagado de cada socio
         Map<Long, LocalDate> ultimoPorSocio = pagoRepo.findUltimoPagoPorSocio().stream()
                 .collect(Collectors.toMap(UltimoPagoDto::socioId, UltimoPagoDto::ultimoMes));
 
+        // Validamos filtro y orden ANTES de procesar (si son invalidos, 400)
+        Predicate<SocioEstadoResponse> cumpleFiltro = predicadoDeFiltro(filtro);
+        Comparator<SocioEstadoResponse> comparador = comparadorDeOrden(orden);
+        List<String> palabras = palabrasDeBusqueda(buscar);
+
         return getSocios().stream()
                 .map(socio -> armarEstado(socio, ultimoPorSocio.get(socio.getId()), mesActual))
+                .filter(cumpleFiltro)
+                .filter(estado -> coincideConBusqueda(estado, palabras))
+                .sorted(comparador)
                 .toList();
     }
 
@@ -157,5 +171,64 @@ public class SocioService implements ISocioService {
                 mesesAdeudados > 0,
                 mesesAdeudados
         );
+    }
+
+    private Predicate<SocioEstadoResponse> predicadoDeFiltro(String filtro) {
+        return switch (filtro.toLowerCase()) {
+            case "activos" -> SocioEstadoResponse::activo;
+            case "deudores" -> SocioEstadoResponse::debe;
+            case "al-dia" -> estado -> estado.activo() && !estado.debe();
+            case "bajas" -> estado -> !estado.activo();
+            case "todos" -> estado -> true;
+            default -> throw new ParametroInvalidoException("filtro", filtro,
+                    "activos, deudores, al-dia, bajas, todos");
+        };
+    }
+
+    private Comparator<SocioEstadoResponse> comparadorDeOrden(String orden) {
+        Comparator<SocioEstadoResponse> porApellido = Comparator
+                .comparing((SocioEstadoResponse s) -> normalizar(s.apellido()))
+                .thenComparing(s -> normalizar(s.nombre()));
+
+        return switch (orden.toLowerCase()) {
+            case "apellido" -> porApellido;
+            // el que mas meses debe, primero (los que estan al dia, con 0, quedan al final)
+            case "moroso-antiguo" -> Comparator
+                    .comparingLong(SocioEstadoResponse::mesesAdeudados).reversed()
+                    .thenComparing(porApellido);
+            // los deudores con menos meses primero; los que estan al dia, al final
+            case "moroso-reciente" -> Comparator
+                    .comparing((SocioEstadoResponse s) -> s.debe() ? 0 : 1)
+                    .thenComparingLong(SocioEstadoResponse::mesesAdeudados)
+                    .thenComparing(porApellido);
+            default -> throw new ParametroInvalidoException("orden", orden,
+                    "apellido, moroso-antiguo, moroso-reciente");
+        };
+    }
+
+    private List<String> palabrasDeBusqueda(String buscar) {
+        if (buscar == null || buscar.isBlank()) {
+            return List.of();
+        }
+        return Arrays.asList(normalizar(buscar).trim().split("\\s+"));
+    }
+
+    // Todas las palabras buscadas deben aparecer en "apellido nombre dni"
+    private boolean coincideConBusqueda(SocioEstadoResponse estado, List<String> palabras) {
+        if (palabras.isEmpty()) {
+            return true;
+        }
+        String texto = normalizar(estado.apellido() + " " + estado.nombre() + " " + estado.dni());
+        return palabras.stream().allMatch(texto::contains);
+    }
+
+    // Pasa a minusculas y quita tildes: "García" -> "garcia"
+    private String normalizar(String texto) {
+        if (texto == null) {
+            return "";
+        }
+        return Normalizer.normalize(texto, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase();
     }
 }

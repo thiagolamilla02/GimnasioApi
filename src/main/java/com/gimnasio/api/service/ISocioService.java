@@ -30,6 +30,6 @@ public interface ISocioService {
     //dar de baja a un socio que estaba de alta
     public void bajaSocio(Long id);
 
-    //lista de socios con su estado de cuota (debe / al dia)
-    public List<SocioEstadoResponse> getSociosConEstado();
+    //lista de socios con su estado de cuota, con busqueda, filtro y orden
+    public List<SocioEstadoResponse> getSociosConEstado(String buscar, String filtro, String orden);
 }

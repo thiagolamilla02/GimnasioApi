@@ -19,8 +19,11 @@ public class SocioController {
     private ISocioService iSocioServ;
 
     @GetMapping("/estado")
-    public List<SocioEstadoResponse> getSociosConEstado() {
-        return iSocioServ.getSociosConEstado();
+    public List<SocioEstadoResponse> getSociosConEstado(
+            @RequestParam(required = false) String buscar,
+            @RequestParam(defaultValue = "activos") String filtro,
+            @RequestParam(defaultValue = "apellido") String orden) {
+        return iSocioServ.getSociosConEstado(buscar, filtro, orden);
     }
 
     @GetMapping

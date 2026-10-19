@@ -48,4 +48,9 @@ public class ManejadorDeErrores {
     public ProblemDetail socioConPagos(SocioConPagosException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     }
+
+    @ExceptionHandler(ParametroInvalidoException.class)
+    public ProblemDetail parametroInvalido(ParametroInvalidoException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
 }
