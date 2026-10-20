@@ -4,8 +4,8 @@ import java.time.LocalDate;
 
 public record SocioEstadoResponse(
         Long id,
-        String apellido,
-        String nombre,
+        String apellidos,
+        String nombres,
         String dni,
         String telefono,
         boolean activo,

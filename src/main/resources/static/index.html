@@ -9,7 +9,7 @@
 </head>
 <body>
 
-<nav class="navbar navbar-dark bg-dark mb-4">
+<nav class="navbar navbar-dark bg-dark mb-3">
     <div class="container">
         <span class="navbar-brand mb-0 h1">Gestión de socios</span>
     </div>
@@ -17,8 +17,18 @@
 
 <main class="container">
 
+    <!-- Barra de acciones -->
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        <button type="button" id="btn-nuevo-socio" class="btn btn-primary btn-lg">+ Nuevo socio</button>
+        <button type="button" id="btn-todos" class="btn btn-outline-secondary btn-lg">Todos los socios</button>
+        <button type="button" class="btn btn-outline-secondary btn-lg" disabled
+                title="Próximamente">Pagos</button>
+    </div>
+
+    <div id="mensaje-exito" class="alert alert-success d-none" role="alert"></div>
     <div id="mensaje-error" class="alert alert-danger d-none" role="alert"></div>
 
+    <!-- Buscador, filtro y orden -->
     <div class="row g-2 mb-3">
         <div class="col-12 col-md-6">
             <label for="buscar" class="form-label">Buscar</label>
@@ -47,20 +57,20 @@
 
     <p id="contador" class="text-muted"></p>
 
-    <div class="table-responsive">
-        <table class="table table-hover align-middle">
-            <thead class="table-light">
-            <tr>
-                <th>Apellido y nombre</th>
-                <th>DNI</th>
-                <th>Teléfono</th>
-                <th>Estado</th>
-                <th>Último mes pagado</th>
-            </tr>
-            </thead>
-            <tbody id="tabla-socios"></tbody>
-        </table>
-    </div>
+    <!-- Sin "table-responsive": ese contenedor corta los menus desplegables -->
+    <table class="table table-hover align-middle">
+        <thead class="table-light">
+        <tr>
+            <th>Apellidos y nombres</th>
+            <th>DNI</th>
+            <th>Teléfono</th>
+            <th>Estado</th>
+            <th>Último mes pagado</th>
+            <th class="text-end">Acciones</th>
+        </tr>
+        </thead>
+        <tbody id="tabla-socios"></tbody>
+    </table>
 
     <p id="sin-resultados" class="text-center text-muted d-none">
         No hay socios que coincidan con la búsqueda.
@@ -68,6 +78,67 @@
 
 </main>
 
+<!-- Ventana: nuevo socio / editar socio -->
+<div class="modal fade" id="modal-socio" tabindex="-1" aria-labelledby="modal-socio-titulo" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="form-socio" novalidate>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-socio-titulo">Nuevo socio</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div id="modal-socio-error" class="alert alert-danger d-none" role="alert"></div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="socio-apellidos" class="form-label">Apellidos *</label>
+                            <input type="text" id="socio-apellidos" class="form-control" autocomplete="off">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="socio-nombres" class="form-label">Nombres *</label>
+                            <input type="text" id="socio-nombres" class="form-control" autocomplete="off">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="socio-dni" class="form-label">DNI *</label>
+                            <input type="text" id="socio-dni" class="form-control" inputmode="numeric"
+                                   maxlength="8" placeholder="Sin puntos" autocomplete="off">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="socio-telefono" class="form-label">Teléfono</label>
+                            <input type="text" id="socio-telefono" class="form-control" autocomplete="off">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-12">
+                            <label for="socio-domicilio" class="form-label">Domicilio</label>
+                            <input type="text" id="socio-domicilio" class="form-control" autocomplete="off">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="socio-aptoFisico">
+                                <label class="form-check-label" for="socio-aptoFisico">
+                                    Presentó el apto físico
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" id="btn-guardar-socio" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

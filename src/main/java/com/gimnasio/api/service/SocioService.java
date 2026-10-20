@@ -187,8 +187,8 @@ public class SocioService implements ISocioService {
 
     private Comparator<SocioEstadoResponse> comparadorDeOrden(String orden) {
         Comparator<SocioEstadoResponse> porApellido = Comparator
-                .comparing((SocioEstadoResponse s) -> normalizar(s.apellido()))
-                .thenComparing(s -> normalizar(s.nombre()));
+                .comparing((SocioEstadoResponse s) -> normalizar(s.apellidos()))
+                .thenComparing(s -> normalizar(s.nombres()));
 
         return switch (orden.toLowerCase()) {
             case "apellido" -> porApellido;
@@ -218,7 +218,7 @@ public class SocioService implements ISocioService {
         if (palabras.isEmpty()) {
             return true;
         }
-        String texto = normalizar(estado.apellido() + " " + estado.nombre() + " " + estado.dni());
+        String texto = normalizar(estado.apellidos() + " " + estado.nombres() + " " + estado.dni());
         return palabras.stream().allMatch(texto::contains);
     }
 
