@@ -17,12 +17,20 @@
 
 <main class="container">
 
-    <!-- Barra de acciones -->
-    <div class="d-flex flex-wrap gap-2 mb-4">
+    <!-- Pestañas y boton de nuevo socio -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <ul class="nav nav-pills" id="pestanas">
+            <li class="nav-item">
+                <button type="button" class="nav-link active" data-vista="cobranza">Cobranza</button>
+            </li>
+            <li class="nav-item">
+                <button type="button" class="nav-link" data-vista="socios">Socios</button>
+            </li>
+            <li class="nav-item">
+                <button type="button" class="nav-link disabled" disabled title="Próximamente">Pagos</button>
+            </li>
+        </ul>
         <button type="button" id="btn-nuevo-socio" class="btn btn-primary btn-lg">+ Nuevo socio</button>
-        <button type="button" id="btn-todos" class="btn btn-outline-secondary btn-lg">Todos los socios</button>
-        <button type="button" class="btn btn-outline-secondary btn-lg" disabled
-                title="Próximamente">Pagos</button>
     </div>
 
     <div id="mensaje-exito" class="alert alert-success d-none" role="alert"></div>
@@ -61,7 +69,7 @@
     <table class="table table-hover align-middle">
         <thead class="table-light">
         <tr>
-            <th>Apellidos y nombres</th>
+            <th>Apellido y nombre</th>
             <th>DNI</th>
             <th>Teléfono</th>
             <th>Estado</th>
@@ -134,6 +142,26 @@
                     <button type="submit" id="btn-guardar-socio" class="btn btn-primary">Guardar</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Ventana de confirmacion (baja, reactivar, eliminar) -->
+<div class="modal fade" id="modal-confirmacion" tabindex="-1" aria-labelledby="confirmacion-titulo" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmacion-titulo"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div id="confirmacion-error" class="alert alert-danger d-none" role="alert"></div>
+                <p id="confirmacion-mensaje" class="mb-0"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" id="btn-confirmar" class="btn btn-danger">Confirmar</button>
+            </div>
         </div>
     </div>
 </div>

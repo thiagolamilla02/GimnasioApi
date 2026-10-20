@@ -3,8 +3,21 @@ const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
 
 const CAMPOS_TEXTO = ["apellidos", "nombres", "dni", "domicilio", "telefono"];
 
+// Rutas de la API para dar de baja y reactivar un socio (ambas con PATCH).
+// Si en tu controller se llaman distinto, cambialas aca.
+const RUTA_BAJA = (id) => "/socios/" + id + "/baja";
+const RUTA_REACTIVAR = (id) => "/socios/" + id + "/alta";
+
+// Cada vista arranca con su propio filtro y orden
+const VISTAS = {
+    cobranza: {filtro: "activos", orden: "apellido"},
+    socios: {filtro: "todos", orden: "apellido"}
+};
+let vista = "cobranza";
+
 // ---------- Elementos de la pagina ----------
 
+const pestanas = document.getElementById("pestanas");
 const inputBuscar = document.getElementById("buscar");
 const selectFiltro = document.getElementById("filtro");
 const selectOrden = document.getElementById("orden");
@@ -13,10 +26,9 @@ const contador = document.getElementById("contador");
 const sinResultados = document.getElementById("sin-resultados");
 const mensajeError = document.getElementById("mensaje-error");
 const mensajeExito = document.getElementById("mensaje-exito");
-
 const btnNuevoSocio = document.getElementById("btn-nuevo-socio");
-const btnTodos = document.getElementById("btn-todos");
 
+// Ventana de nuevo / editar socio
 const modalSocioElemento = document.getElementById("modal-socio");
 const modalSocio = new bootstrap.Modal(modalSocioElemento);
 const modalTitulo = document.getElementById("modal-socio-titulo");
@@ -24,8 +36,21 @@ const modalError = document.getElementById("modal-socio-error");
 const formSocio = document.getElementById("form-socio");
 const btnGuardarSocio = document.getElementById("btn-guardar-socio");
 
+// Ventana de confirmacion
+const modalConfirmacion = new bootstrap.Modal(document.getElementById("modal-confirmacion"));
+const confirmacionTitulo = document.getElementById("confirmacion-titulo");
+const confirmacionMensaje = document.getElementById("confirmacion-mensaje");
+const confirmacionError = document.getElementById("confirmacion-error");
+const btnConfirmar = document.getElementById("btn-confirmar");
+
+// Los socios que se estan mostrando, por id (para recuperar sus datos al tocar un boton)
+const sociosPorId = new Map();
+
 // null = estamos creando un socio; un numero = estamos editando ese socio
 let socioEnEdicionId = null;
+
+// Funcion que se ejecuta cuando la persona confirma en la ventana de confirmacion
+let accionConfirmable = null;
 
 // ---------- Lista de socios ----------
 
@@ -54,11 +79,14 @@ async function cargarSocios() {
 
 function pintarTabla(socios) {
     tablaSocios.replaceChildren();
+    sociosPorId.clear();
 
     for (const socio of socios) {
+        sociosPorId.set(socio.id, socio);
+
         const fila = document.createElement("tr");
 
-        fila.appendChild(crearCelda(socio.apellidos + ", " + socio.nombres));
+        fila.appendChild(crearCelda(nombreCompleto(socio)));
         fila.appendChild(crearCelda(socio.dni));
         fila.appendChild(crearCelda(socio.telefono || "-"));
 
@@ -74,6 +102,10 @@ function pintarTabla(socios) {
 
     contador.textContent = socios.length === 1 ? "1 socio" : socios.length + " socios";
     sinResultados.classList.toggle("d-none", socios.length > 0);
+}
+
+function nombreCompleto(socio) {
+    return socio.apellidos + ", " + socio.nombres;
 }
 
 function crearCelda(texto) {
@@ -101,26 +133,45 @@ function crearBadgeEstado(socio) {
     return badge;
 }
 
-// Menu desplegable de acciones de cada fila.
-// Solo lleva texto fijo y el id numerico del socio (ningun dato escrito por el usuario).
+// Botones de cada fila. Cambian segun la vista.
+// Solo llevan texto fijo y el id numerico del socio (ningun dato escrito por el usuario).
 function crearCeldaAcciones(socio) {
     const id = Number(socio.id);
     const celda = document.createElement("td");
     celda.classList.add("text-end");
 
-    celda.innerHTML = `
-        <div class="dropdown">
-            <button type="button" class="btn btn-outline-secondary"
-                    data-bs-toggle="dropdown" aria-expanded="false">⋮ Acciones</button>
-            <ul class="dropdown-menu dropdown-menu-end">
-                <li><button type="button" class="dropdown-item"
-                            data-accion="editar" data-id="${id}">Editar socio</button></li>
-                <li><button type="button" class="dropdown-item" disabled>Ver pagos (próximamente)</button></li>
-                <li><button type="button" class="dropdown-item" disabled>${socio.activo ? "Dar de baja" : "Reactivar"} (próximamente)</button></li>
-                <li><hr class="dropdown-divider"></li>
-                <li><button type="button" class="dropdown-item text-danger" disabled>Eliminar (próximamente)</button></li>
-            </ul>
-        </div>`;
+    if (vista === "cobranza") {
+        celda.innerHTML = `
+            <div class="d-inline-flex gap-2">
+                <button type="button" class="btn btn-success" disabled title="Próximamente">Cobrar</button>
+                <div class="dropdown">
+                    <button type="button" class="btn btn-outline-secondary"
+                            data-bs-toggle="dropdown" aria-expanded="false" aria-label="Más acciones">⋮</button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><button type="button" class="dropdown-item" disabled>Ver pagos (próximamente)</button></li>
+                    </ul>
+                </div>
+            </div>`;
+    } else {
+        const accionEstado = socio.activo ? "baja" : "reactivar";
+        const textoEstado = socio.activo ? "Dar de baja" : "Reactivar";
+
+        celda.innerHTML = `
+            <div class="dropdown">
+                <button type="button" class="btn btn-outline-secondary"
+                        data-bs-toggle="dropdown" aria-expanded="false">⋮ Acciones</button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><button type="button" class="dropdown-item"
+                                data-accion="editar" data-id="${id}">Editar socio</button></li>
+                    <li><button type="button" class="dropdown-item" disabled>Ver pagos (próximamente)</button></li>
+                    <li><button type="button" class="dropdown-item"
+                                data-accion="${accionEstado}" data-id="${id}">${textoEstado}</button></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><button type="button" class="dropdown-item text-danger"
+                                data-accion="eliminar" data-id="${id}">Eliminar</button></li>
+                </ul>
+            </div>`;
+    }
     return celda;
 }
 
@@ -133,6 +184,19 @@ function formatearMes(fechaIso) {
     const [anio, mes] = fechaIso.split("-");
     const nombre = MESES[Number(mes) - 1];
     return nombre.charAt(0).toUpperCase() + nombre.slice(1) + " " + anio;
+}
+
+// ---------- Pestañas (vistas) ----------
+
+function cambiarVista(nueva) {
+    vista = nueva;
+    for (const boton of pestanas.querySelectorAll("[data-vista]")) {
+        boton.classList.toggle("active", boton.dataset.vista === nueva);
+    }
+    inputBuscar.value = "";
+    selectFiltro.value = VISTAS[nueva].filtro;
+    selectOrden.value = VISTAS[nueva].orden;
+    cargarSocios();
 }
 
 // ---------- Formulario de socio (nuevo / editar) ----------
@@ -188,10 +252,10 @@ function valorDe(campo) {
 function validar(datos) {
     const errores = {};
     if (!datos.apellidos) {
-        errores.apellidos = "Ingresá el o los apellidos.";
+        errores.apellidos = "Ingresá el apellido.";
     }
     if (!datos.nombres) {
-        errores.nombres = "Ingresá el o los nombres.";
+        errores.nombres = "Ingresá el nombre.";
     }
     if (!datos.dni) {
         errores.dni = "Ingresá el DNI.";
@@ -220,7 +284,7 @@ function mostrarErrorEnModal(texto) {
     modalError.classList.remove("d-none");
 }
 
-// Interpreta una respuesta de error de la API (400, 409, 404...)
+// Interpreta una respuesta de error de la API al guardar un socio (400, 409...)
 async function manejarErrorDeRespuesta(respuesta) {
     const texto = await respuesta.text();
     console.log("Respuesta del servidor (" + respuesta.status + "):", texto);
@@ -291,6 +355,129 @@ modalSocioElemento.addEventListener("shown.bs.modal", () => {
     document.getElementById("socio-apellidos").focus();
 });
 
+// ---------- Confirmaciones: baja, reactivar y eliminar ----------
+
+function abrirConfirmacion({titulo, mensaje, textoBoton, claseBoton, accion}) {
+    confirmacionTitulo.textContent = titulo;
+    confirmacionMensaje.textContent = mensaje;
+    confirmacionError.classList.add("d-none");
+    btnConfirmar.textContent = textoBoton;
+    btnConfirmar.className = "btn " + claseBoton;
+    btnConfirmar.disabled = false;
+    accionConfirmable = accion;
+    modalConfirmacion.show();
+}
+
+function mostrarErrorEnConfirmacion(texto) {
+    confirmacionError.textContent = texto;
+    confirmacionError.classList.remove("d-none");
+}
+
+btnConfirmar.addEventListener("click", async () => {
+    if (!accionConfirmable) {
+        return;
+    }
+    btnConfirmar.disabled = true; // evita confirmar dos veces con un doble clic
+    try {
+        await accionConfirmable();
+    } finally {
+        btnConfirmar.disabled = false;
+    }
+});
+
+// Saca el mensaje de una respuesta de error de la API
+async function leerMensajeDeError(respuesta) {
+    const texto = await respuesta.text();
+    console.log("Respuesta del servidor (" + respuesta.status + "):", texto);
+    try {
+        const problema = JSON.parse(texto);
+        if (problema.detail) {
+            return problema.detail;
+        }
+    } catch (error) {
+        // la respuesta no es JSON
+    }
+    return "Ocurrió un error (código " + respuesta.status + ").";
+}
+
+function pedirBaja(socio) {
+    abrirConfirmacion({
+        titulo: "Dar de baja",
+        mensaje: "¿Dar de baja a " + nombreCompleto(socio) + "? Dejará de figurar como activo, "
+            + "pero se conservan sus datos y su historial de pagos. Podés reactivarlo cuando quieras.",
+        textoBoton: "Dar de baja",
+        claseBoton: "btn-warning",
+        accion: () => cambiarEstado(socio, "baja")
+    });
+}
+
+function pedirReactivacion(socio) {
+    abrirConfirmacion({
+        titulo: "Reactivar socio",
+        mensaje: "¿Reactivar a " + nombreCompleto(socio) + "? Volverá a figurar como activo.",
+        textoBoton: "Reactivar",
+        claseBoton: "btn-success",
+        accion: () => cambiarEstado(socio, "reactivar")
+    });
+}
+
+async function cambiarEstado(socio, tipo) {
+    const ruta = tipo === "baja" ? RUTA_BAJA(socio.id) : RUTA_REACTIVAR(socio.id);
+
+    try {
+        const respuesta = await fetch(ruta, {method: "PATCH"});
+        if (respuesta.ok) {
+            modalConfirmacion.hide();
+            mostrarExito(tipo === "baja" ? "Socio dado de baja." : "Socio reactivado.");
+            await cargarSocios();
+        } else {
+            mostrarErrorEnConfirmacion(await leerMensajeDeError(respuesta));
+        }
+    } catch (error) {
+        mostrarErrorEnConfirmacion("No se pudo conectar con el servidor.");
+    }
+}
+
+function pedirEliminar(socio) {
+    abrirConfirmacion({
+        titulo: "Eliminar socio",
+        mensaje: "¿Eliminar definitivamente a " + nombreCompleto(socio) + "? Esta acción no se puede "
+            + "deshacer. Si solo querés que deje de figurar como activo, usá \"Dar de baja\".",
+        textoBoton: "Eliminar",
+        claseBoton: "btn-danger",
+        accion: () => eliminarSocio(socio, false)
+    });
+}
+
+async function eliminarSocio(socio, conPagos) {
+    const url = "/socios/" + socio.id + (conPagos ? "?eliminarPagos=true" : "");
+
+    try {
+        const respuesta = await fetch(url, {method: "DELETE"});
+
+        if (respuesta.ok) {
+            modalConfirmacion.hide();
+            mostrarExito("Socio eliminado.");
+            await cargarSocios();
+        } else if (respuesta.status === 409 && !conPagos) {
+            // El socio tiene pagos: pedimos una confirmacion mas fuerte
+            abrirConfirmacion({
+                titulo: "El socio tiene pagos registrados",
+                mensaje: nombreCompleto(socio) + " tiene pagos registrados. Si lo eliminás, también se "
+                    + "borrarán todos sus pagos y no se podrán recuperar. Para conservar su historial, "
+                    + "es mejor darlo de baja.",
+                textoBoton: "Eliminar socio y sus pagos",
+                claseBoton: "btn-danger",
+                accion: () => eliminarSocio(socio, true)
+            });
+        } else {
+            mostrarErrorEnConfirmacion(await leerMensajeDeError(respuesta));
+        }
+    } catch (error) {
+        mostrarErrorEnConfirmacion("No se pudo conectar con el servidor.");
+    }
+}
+
 // ---------- Mensajes ----------
 
 function mostrarError(texto) {
@@ -303,6 +490,7 @@ function ocultarError() {
 }
 
 let temporizadorExito;
+
 function mostrarExito(texto) {
     mensajeExito.textContent = texto;
     mensajeExito.classList.remove("d-none");
@@ -324,12 +512,11 @@ selectOrden.addEventListener("change", cargarSocios);
 
 btnNuevoSocio.addEventListener("click", abrirModalNuevo);
 
-// "Todos los socios": limpia el buscador y muestra la lista completa (incluye bajas)
-btnTodos.addEventListener("click", () => {
-    inputBuscar.value = "";
-    selectFiltro.value = "todos";
-    selectOrden.value = "apellido";
-    cargarSocios();
+pestanas.addEventListener("click", (evento) => {
+    const boton = evento.target.closest("[data-vista]");
+    if (boton) {
+        cambiarVista(boton.dataset.vista);
+    }
 });
 
 // Un solo "oyente" para todos los botones del menu de acciones de la tabla
@@ -339,9 +526,24 @@ tablaSocios.addEventListener("click", (evento) => {
         return;
     }
     const id = Number(boton.dataset.id);
+    const socio = sociosPorId.get(id);
+    if (!socio) {
+        return;
+    }
 
-    if (boton.dataset.accion === "editar") {
-        abrirModalEditar(id);
+    switch (boton.dataset.accion) {
+        case "editar":
+            abrirModalEditar(id);
+            break;
+        case "baja":
+            pedirBaja(socio);
+            break;
+        case "reactivar":
+            pedirReactivacion(socio);
+            break;
+        case "eliminar":
+            pedirEliminar(socio);
+            break;
     }
 });
 

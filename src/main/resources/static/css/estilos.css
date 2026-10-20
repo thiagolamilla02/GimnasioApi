@@ -11,3 +11,8 @@ body {
 .estado-badge {
     font-size: 0.95rem;
 }
+
+.nav-pills .nav-link {
+    font-size: 1.1rem;
+    padding: 0.6rem 1.2rem;
+}
