@@ -159,6 +159,105 @@
     </div>
 </div>
 
+<!-- Ventana de pagos: historial, registrar / corregir y confirmar eliminacion -->
+<div class="modal fade" id="modal-pagos" tabindex="-1" aria-labelledby="pagos-titulo" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title" id="pagos-titulo"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+
+            <!-- Panel 1: lista de pagos del socio -->
+            <div id="panel-lista" class="modal-body">
+                <div id="pagos-error" class="alert alert-danger d-none" role="alert"></div>
+                <div id="pagos-exito" class="alert alert-success d-none" role="alert"></div>
+
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <p id="pagos-resumen" class="mb-0 text-muted"></p>
+                    <button type="button" id="btn-nuevo-pago" class="btn btn-success">+ Registrar pago</button>
+                </div>
+
+                <table class="table table-sm align-middle">
+                    <thead class="table-light">
+                    <tr>
+                        <th>Mes pagado</th>
+                        <th>Fecha de pago</th>
+                        <th>Monto</th>
+                        <th>Medio</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                    </thead>
+                    <tbody id="tabla-pagos"></tbody>
+                </table>
+
+                <p id="pagos-vacio" class="text-center text-muted d-none">
+                    Este socio todavía no tiene pagos registrados.
+                </p>
+            </div>
+
+            <!-- Panel 2: formulario (registrar o corregir un pago) -->
+            <form id="form-pago" class="d-none" novalidate>
+                <div class="modal-body">
+                    <div id="pago-error" class="alert alert-danger d-none" role="alert"></div>
+
+                    <div class="row g-3">
+                        <div class="col-7">
+                            <label for="pago-mes" class="form-label">Mes que se paga *</label>
+                            <select id="pago-mes" class="form-select form-select-lg"></select>
+                        </div>
+                        <div class="col-5">
+                            <label for="pago-anio" class="form-label">Año *</label>
+                            <select id="pago-anio" class="form-select form-select-lg"></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="pago-monto" class="form-label">Monto *</label>
+                            <div class="input-group input-group-lg has-validation">
+                                <span class="input-group-text">$</span>
+                                <input type="number" id="pago-monto" class="form-control"
+                                       min="0" step="0.01" inputmode="decimal" autocomplete="off">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="pago-fecha" class="form-label">Fecha en que pagó</label>
+                            <input type="date" id="pago-fecha" class="form-control form-control-lg">
+                        </div>
+                        <div class="col-12">
+                            <label for="pago-medio" class="form-label">Medio de pago *</label>
+                            <select id="pago-medio" class="form-select form-select-lg">
+                                <option value="EFECTIVO">Efectivo</option>
+                                <option value="TRANSFERENCIA">Transferencia</option>
+                            </select>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancelar-pago" class="btn btn-outline-secondary">Cancelar</button>
+                    <button type="submit" id="btn-guardar-pago" class="btn btn-success">Guardar pago</button>
+                </div>
+            </form>
+
+            <!-- Panel 3: confirmar la eliminacion de un pago -->
+            <div id="panel-confirmar-pago" class="d-none">
+                <div class="modal-body">
+                    <div id="eliminar-pago-error" class="alert alert-danger d-none" role="alert"></div>
+                    <p id="eliminar-pago-mensaje" class="mb-0"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancelar-eliminar-pago"
+                            class="btn btn-outline-secondary">Cancelar</button>
+                    <button type="button" id="btn-confirmar-eliminar-pago"
+                            class="btn btn-danger">Eliminar pago</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/app.js"></script>
 </body>

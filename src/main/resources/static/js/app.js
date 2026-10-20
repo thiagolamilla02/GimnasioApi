@@ -190,6 +190,8 @@ function crearCeldaAptoFisico(socio) {
 
 // Botones de cada fila. Cambian segun la vista.
 // Solo llevan texto fijo y el id numerico del socio (ningun dato escrito por el usuario).
+// Botones de cada fila. Cambian segun la vista.
+// Solo llevan texto fijo y el id numerico del socio (ningun dato escrito por el usuario).
 function crearCeldaAcciones(socio) {
     const id = Number(socio.id);
     const celda = document.createElement("td");
@@ -198,12 +200,14 @@ function crearCeldaAcciones(socio) {
     if (vista === "cobranza") {
         celda.innerHTML = `
             <div class="d-inline-flex gap-2">
-                <button type="button" class="btn btn-success" disabled title="Próximamente">Cobrar</button>
+                <button type="button" class="btn btn-success"
+                        data-accion="cobrar" data-id="${id}">Cobrar</button>
                 <div class="dropdown">
                     <button type="button" class="btn btn-outline-secondary"
                             data-bs-toggle="dropdown" aria-expanded="false" aria-label="Más acciones">⋮</button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><button type="button" class="dropdown-item" disabled>Ver pagos (próximamente)</button></li>
+                        <li><button type="button" class="dropdown-item"
+                                    data-accion="pagos" data-id="${id}">Ver pagos</button></li>
                     </ul>
                 </div>
             </div>`;
@@ -218,7 +222,8 @@ function crearCeldaAcciones(socio) {
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li><button type="button" class="dropdown-item"
                                 data-accion="editar" data-id="${id}">Editar socio</button></li>
-                    <li><button type="button" class="dropdown-item" disabled>Ver pagos (próximamente)</button></li>
+                    <li><button type="button" class="dropdown-item"
+                                data-accion="pagos" data-id="${id}">Ver pagos</button></li>
                     <li><button type="button" class="dropdown-item"
                                 data-accion="${accionEstado}" data-id="${id}">${textoEstado}</button></li>
                     <li><hr class="dropdown-divider"></li>
@@ -533,6 +538,450 @@ async function eliminarSocio(socio, conPagos) {
     }
 }
 
+// ---------- Pagos: cobrar, historial, corregir y eliminar ----------
+
+const MEDIOS = {EFECTIVO: "Efectivo", TRANSFERENCIA: "Transferencia"};
+
+const modalPagosElemento = document.getElementById("modal-pagos");
+const modalPagos = new bootstrap.Modal(modalPagosElemento);
+const pagosTitulo = document.getElementById("pagos-titulo");
+
+// Panel 1: lista
+const panelLista = document.getElementById("panel-lista");
+const pagosError = document.getElementById("pagos-error");
+const pagosExito = document.getElementById("pagos-exito");
+const pagosResumen = document.getElementById("pagos-resumen");
+const pagosVacio = document.getElementById("pagos-vacio");
+const tablaPagos = document.getElementById("tabla-pagos");
+const btnNuevoPago = document.getElementById("btn-nuevo-pago");
+
+// Panel 2: formulario
+const formPago = document.getElementById("form-pago");
+const pagoError = document.getElementById("pago-error");
+const selectPagoMes = document.getElementById("pago-mes");
+const selectPagoAnio = document.getElementById("pago-anio");
+const inputPagoFecha = document.getElementById("pago-fecha");
+const inputPagoMonto = document.getElementById("pago-monto");
+const selectPagoMedio = document.getElementById("pago-medio");
+const btnCancelarPago = document.getElementById("btn-cancelar-pago");
+const btnGuardarPago = document.getElementById("btn-guardar-pago");
+
+// Panel 3: confirmar eliminacion
+const panelConfirmarPago = document.getElementById("panel-confirmar-pago");
+const eliminarPagoError = document.getElementById("eliminar-pago-error");
+const eliminarPagoMensaje = document.getElementById("eliminar-pago-mensaje");
+const btnCancelarEliminarPago = document.getElementById("btn-cancelar-eliminar-pago");
+const btnConfirmarEliminarPago = document.getElementById("btn-confirmar-eliminar-pago");
+
+let socioDePagos = null;       // socio al que pertenece la ventana abierta
+let pagoEnEdicionId = null;    // null = registrando un pago nuevo; numero = corrigiendo ese pago
+let volverALista = false;      // true si el formulario se abrio desde la lista de pagos
+let pagoPorEliminar = null;    // pago que espera confirmacion para eliminarse
+const pagosDelSocio = new Map(); // pagos cargados, por id (en el orden en que llegan: del mas reciente)
+
+// Llenamos las listas de mes y de año
+MESES.forEach((nombre, indice) => {
+    const opcion = document.createElement("option");
+    opcion.value = String(indice + 1);
+    opcion.textContent = nombre.charAt(0).toUpperCase() + nombre.slice(1);
+    selectPagoMes.appendChild(opcion);
+});
+const anioActual = new Date().getFullYear();
+for (let anio = anioActual - 3; anio <= anioActual + 1; anio++) {
+    asegurarAnio(anio);
+}
+
+// ----- Fechas (se manejan como texto "AAAA-MM-DD"; las fechas de los pagos son del dia 1 del mes) -----
+
+function dosDigitos(numero) {
+    return String(numero).padStart(2, "0");
+}
+
+// Fecha de hoy segun el reloj de la PC
+function hoyIso() {
+    const hoy = new Date();
+    return hoy.getFullYear() + "-" + dosDigitos(hoy.getMonth() + 1) + "-" + dosDigitos(hoy.getDate());
+}
+
+function mesActualIso() {
+    return hoyIso().slice(0, 8) + "01";
+}
+
+// sumarMeses("2026-10-01", 1) -> "2026-11-01"
+function sumarMeses(fechaIso, cantidad) {
+    const [anio, mes] = fechaIso.split("-").map(Number);
+    const indice = anio * 12 + (mes - 1) + cantidad;
+    return Math.floor(indice / 12) + "-" + dosDigitos((indice % 12) + 1) + "-01";
+}
+
+// "2026-10-15" -> "15/10/2026"
+function formatearFecha(fechaIso) {
+    if (!fechaIso) {
+        return "-";
+    }
+    const [anio, mes, dia] = fechaIso.split("-");
+    return dia + "/" + mes + "/" + anio;
+}
+
+function formatearMonto(monto) {
+    return Number(monto).toLocaleString("es-AR", {style: "currency", currency: "ARS"});
+}
+
+// Mes que se propone al cobrar: el siguiente al ultimo pagado; si nunca pago, el primer mes que debe
+function sugerirMes(ultimoMesPagado, mesesAdeudados) {
+    if (ultimoMesPagado) {
+        return sumarMeses(ultimoMesPagado, 1);
+    }
+    return sumarMeses(mesActualIso(), -(Math.max(mesesAdeudados, 1) - 1));
+}
+
+// Agrega un año a la lista si todavia no esta (por ejemplo, al corregir un pago antiguo)
+function asegurarAnio(anio) {
+    const opciones = Array.from(selectPagoAnio.options);
+    if (opciones.some((opcion) => Number(opcion.value) === anio)) {
+        return;
+    }
+    const posterior = opciones.find((opcion) => Number(opcion.value) > anio);
+    selectPagoAnio.add(new Option(String(anio), String(anio)), posterior || null);
+}
+
+function establecerMesPago(fechaIso) {
+    const [anio, mes] = fechaIso.split("-").map(Number);
+    asegurarAnio(anio);
+    selectPagoAnio.value = String(anio);
+    selectPagoMes.value = String(mes);
+}
+
+// ----- Paneles de la ventana -----
+
+function mostrarPanel(nombre, titulo) {
+    panelLista.classList.toggle("d-none", nombre !== "lista");
+    formPago.classList.toggle("d-none", nombre !== "formulario");
+    panelConfirmarPago.classList.toggle("d-none", nombre !== "confirmar");
+    pagosTitulo.textContent = titulo;
+}
+
+function tituloLista() {
+    return "Pagos de " + nombreCompleto(socioDePagos);
+}
+
+// ----- Abrir la ventana: cobrar -----
+
+async function abrirCobro(socio) {
+    socioDePagos = socio;
+    pagoEnEdicionId = null;
+    volverALista = false;
+
+    const pagos = await obtenerPagos(socio);
+    prepararFormularioPago(null, pagos);
+    mostrarPanel("formulario", "Registrar pago: " + nombreCompleto(socio));
+    modalPagos.show();
+}
+
+// Trae los pagos del socio; si falla, devuelve una lista vacia (el formulario igual se puede usar)
+async function obtenerPagos(socio) {
+    try {
+        const respuesta = await fetch("/socios/" + socio.id + "/pagos");
+        if (!respuesta.ok) {
+            return [];
+        }
+        return await respuesta.json();
+    } catch (error) {
+        return [];
+    }
+}
+
+// ----- Abrir la ventana: historial -----
+
+async function abrirHistorial(socio) {
+    socioDePagos = socio;
+    pagosError.classList.add("d-none");
+    pagosExito.classList.add("d-none");
+    pagosResumen.textContent = "Cargando...";
+    tablaPagos.replaceChildren();
+    pagosVacio.classList.add("d-none");
+
+    mostrarPanel("lista", tituloLista());
+    modalPagos.show();
+    await cargarPagos();
+}
+
+async function cargarPagos() {
+    try {
+        const respuesta = await fetch("/socios/" + socioDePagos.id + "/pagos");
+        if (!respuesta.ok) {
+            throw new Error("el servidor respondió " + respuesta.status);
+        }
+        pintarPagos(await respuesta.json());
+    } catch (error) {
+        pagosResumen.textContent = "";
+        mostrarErrorLista("No se pudieron cargar los pagos (" + error.message + ").");
+    }
+}
+
+function pintarPagos(pagos) {
+    tablaPagos.replaceChildren();
+    pagosDelSocio.clear();
+
+    for (const pago of pagos) {
+        pagosDelSocio.set(pago.id, pago);
+        const id = Number(pago.id);
+
+        const fila = document.createElement("tr");
+        fila.appendChild(crearCelda(formatearMes(pago.mesPagado)));
+        fila.appendChild(crearCelda(formatearFecha(pago.fechaPago)));
+        fila.appendChild(crearCelda(formatearMonto(pago.monto)));
+        fila.appendChild(crearCelda(MEDIOS[pago.medioPago] || pago.medioPago));
+
+        const celda = document.createElement("td");
+        celda.classList.add("text-end", "text-nowrap");
+        celda.innerHTML = `
+            <button type="button" class="btn btn-sm btn-outline-primary"
+                    data-accion-pago="editar" data-id="${id}">Corregir</button>
+            <button type="button" class="btn btn-sm btn-outline-danger"
+                    data-accion-pago="eliminar" data-id="${id}">Eliminar</button>`;
+        fila.appendChild(celda);
+
+        tablaPagos.appendChild(fila);
+    }
+
+    pagosVacio.classList.toggle("d-none", pagos.length > 0);
+    pagosResumen.textContent = pagos.length === 1 ? "1 pago registrado" : pagos.length + " pagos registrados";
+}
+
+function mostrarErrorLista(texto) {
+    pagosError.textContent = texto;
+    pagosError.classList.remove("d-none");
+}
+
+let temporizadorExitoPagos;
+
+function mostrarExitoPagos(texto) {
+    pagosExito.textContent = texto;
+    pagosExito.classList.remove("d-none");
+    clearTimeout(temporizadorExitoPagos);
+    temporizadorExitoPagos = setTimeout(() => pagosExito.classList.add("d-none"), 4000);
+}
+
+// ----- Formulario de pago -----
+
+// pago = el pago a corregir, o null si es uno nuevo; pagos = pagos ya conocidos del socio (del mas reciente)
+function prepararFormularioPago(pago, pagos) {
+    limpiarErroresPago();
+
+    if (pago) {
+        establecerMesPago(pago.mesPagado);
+        inputPagoFecha.value = pago.fechaPago || "";
+        inputPagoMonto.value = pago.monto;
+        selectPagoMedio.value = pago.medioPago;
+        return;
+    }
+
+    const ultimoPago = pagos.length > 0 ? pagos[0] : null;
+    const ultimoMes = ultimoPago ? ultimoPago.mesPagado : null;
+
+    establecerMesPago(sugerirMes(ultimoMes, socioDePagos.mesesAdeudados));
+    inputPagoFecha.value = hoyIso();
+    inputPagoMonto.value = ultimoPago ? ultimoPago.monto : ""; // se propone el monto del ultimo pago
+    selectPagoMedio.value = "EFECTIVO";
+}
+
+function limpiarErroresPago() {
+    pagoError.classList.add("d-none");
+    inputPagoMonto.classList.remove("is-invalid");
+    selectPagoMedio.classList.remove("is-invalid");
+}
+
+function mostrarErrorPago(texto) {
+    pagoError.textContent = texto;
+    pagoError.classList.remove("d-none");
+}
+
+function mostrarErroresDePago(errores) {
+    for (const [campo, mensaje] of Object.entries(errores)) {
+        let control = null;
+        if (campo === "monto") {
+            control = inputPagoMonto;
+        } else if (campo === "medioPago") {
+            control = selectPagoMedio;
+        }
+        const aviso = control ? control.parentElement.querySelector(".invalid-feedback") : null;
+
+        if (control && aviso) {
+            control.classList.add("is-invalid");
+            aviso.textContent = mensaje;
+        } else {
+            mostrarErrorPago(mensaje);
+        }
+    }
+}
+
+async function manejarErrorDePago(respuesta) {
+    const texto = await respuesta.text();
+    console.log("Respuesta del servidor (" + respuesta.status + "):", texto);
+
+    let problema = null;
+    try {
+        problema = JSON.parse(texto);
+    } catch (error) {
+        // la respuesta no es JSON
+    }
+
+    if (respuesta.status === 400 && problema && problema.errores) {
+        mostrarErroresDePago(problema.errores);
+    } else if (problema && problema.detail) {
+        mostrarErrorPago(problema.detail);
+    } else {
+        mostrarErrorPago("Ocurrió un error (código " + respuesta.status + ").");
+    }
+}
+
+formPago.addEventListener("submit", async (evento) => {
+    evento.preventDefault();
+    limpiarErroresPago();
+
+    const monto = Number(inputPagoMonto.value);
+    if (!(monto > 0)) {
+        mostrarErroresDePago({monto: "Ingresá un monto mayor a cero."});
+        return;
+    }
+
+    const datos = {
+        mesPagado: selectPagoAnio.value + "-" + dosDigitos(selectPagoMes.value) + "-01",
+        fechaPago: inputPagoFecha.value || null,
+        monto: monto,
+        medioPago: selectPagoMedio.value
+    };
+
+    const editando = pagoEnEdicionId !== null;
+    const url = "/socios/" + socioDePagos.id + "/pagos" + (editando ? "/" + pagoEnEdicionId : "");
+
+    btnGuardarPago.disabled = true; // evita guardar dos veces con un doble clic
+    try {
+        const respuesta = await fetch(url, {
+            method: editando ? "PUT" : "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(datos)
+        });
+
+        if (respuesta.ok) {
+            const mensaje = (editando ? "Pago actualizado: " : "Pago registrado: ")
+                + formatearMes(datos.mesPagado) + ".";
+
+            cargarSocios(); // actualiza los estados de la lista principal
+
+            if (volverALista) {
+                await cargarPagos();
+                mostrarPanel("lista", tituloLista());
+                mostrarExitoPagos(mensaje);
+            } else {
+                modalPagos.hide();
+                mostrarExito(mensaje);
+            }
+        } else {
+            await manejarErrorDePago(respuesta);
+        }
+    } catch (error) {
+        mostrarErrorPago("No se pudo conectar con el servidor.");
+    } finally {
+        btnGuardarPago.disabled = false;
+    }
+});
+
+btnNuevoPago.addEventListener("click", () => {
+    pagoEnEdicionId = null;
+    volverALista = true;
+    prepararFormularioPago(null, Array.from(pagosDelSocio.values()));
+    mostrarPanel("formulario", "Registrar pago: " + nombreCompleto(socioDePagos));
+    inputPagoMonto.focus();
+});
+
+btnCancelarPago.addEventListener("click", () => {
+    if (volverALista) {
+        mostrarPanel("lista", tituloLista());
+    } else {
+        modalPagos.hide();
+    }
+});
+
+// ----- Botones de cada pago (corregir / eliminar) -----
+
+tablaPagos.addEventListener("click", (evento) => {
+    const boton = evento.target.closest("[data-accion-pago]");
+    if (!boton) {
+        return;
+    }
+    const pago = pagosDelSocio.get(Number(boton.dataset.id));
+    if (!pago) {
+        return;
+    }
+
+    if (boton.dataset.accionPago === "editar") {
+        pagoEnEdicionId = pago.id;
+        volverALista = true;
+        prepararFormularioPago(pago, []);
+        mostrarPanel("formulario", "Corregir pago: " + formatearMes(pago.mesPagado));
+        inputPagoMonto.focus();
+    } else if (boton.dataset.accionPago === "eliminar") {
+        pagoPorEliminar = pago;
+        eliminarPagoError.classList.add("d-none");
+        eliminarPagoMensaje.textContent = "¿Eliminar el pago de " + formatearMes(pago.mesPagado)
+            + " (" + formatearMonto(pago.monto) + ") de " + nombreCompleto(socioDePagos)
+            + "? Esta acción no se puede deshacer.";
+        mostrarPanel("confirmar", "Eliminar pago");
+    }
+});
+
+btnCancelarEliminarPago.addEventListener("click", () => {
+    pagoPorEliminar = null;
+    mostrarPanel("lista", tituloLista());
+});
+
+btnConfirmarEliminarPago.addEventListener("click", async () => {
+    if (!pagoPorEliminar) {
+        return;
+    }
+    btnConfirmarEliminarPago.disabled = true;
+    try {
+        const respuesta = await fetch(
+            "/socios/" + socioDePagos.id + "/pagos/" + pagoPorEliminar.id, {method: "DELETE"});
+
+        if (respuesta.ok) {
+            const mes = formatearMes(pagoPorEliminar.mesPagado);
+            pagoPorEliminar = null;
+
+            cargarSocios(); // actualiza los estados de la lista principal
+            await cargarPagos();
+            mostrarPanel("lista", tituloLista());
+            mostrarExitoPagos("Pago eliminado: " + mes + ".");
+        } else {
+            eliminarPagoError.textContent = await leerMensajeDeError(respuesta);
+            eliminarPagoError.classList.remove("d-none");
+        }
+    } catch (error) {
+        eliminarPagoError.textContent = "No se pudo conectar con el servidor.";
+        eliminarPagoError.classList.remove("d-none");
+    } finally {
+        btnConfirmarEliminarPago.disabled = false;
+    }
+});
+
+// Si la ventana se abrio directo en el formulario, el cursor queda en el monto
+modalPagosElemento.addEventListener("shown.bs.modal", () => {
+    if (!formPago.classList.contains("d-none")) {
+        inputPagoMonto.focus();
+    }
+});
+
+// Al cerrarse, se olvida el estado de esa sesion
+modalPagosElemento.addEventListener("hidden.bs.modal", () => {
+    socioDePagos = null;
+    pagoEnEdicionId = null;
+    pagoPorEliminar = null;
+    volverALista = false;
+    pagosDelSocio.clear();
+});
+
 // ---------- Mensajes ----------
 
 function mostrarError(texto) {
@@ -589,6 +1038,12 @@ tablaSocios.addEventListener("click", (evento) => {
     switch (boton.dataset.accion) {
         case "editar":
             abrirModalEditar(id);
+            break;
+        case "cobrar":
+            abrirCobro(socio);
+            break;
+        case "pagos":
+            abrirHistorial(socio);
             break;
         case "baja":
             pedirBaja(socio);
