@@ -166,6 +166,8 @@ public class SocioService implements ISocioService {
                 socio.getNombres(),
                 socio.getDni(),
                 socio.getTelefono(),
+                socio.getDomicilio(),
+                socio.isAptoFisico(),
                 socio.isActivo(),
                 ultimoMesPagado,
                 mesesAdeudados > 0,
@@ -213,13 +215,21 @@ public class SocioService implements ISocioService {
         return Arrays.asList(normalizar(buscar).trim().split("\\s+"));
     }
 
-    // Todas las palabras buscadas deben aparecer en "apellido nombre dni"
+    // Cada palabra buscada debe cumplirse:
+//  - un numero de hasta 5 cifras se toma como ID (coincidencia exacta)
+//  - cualquier otra palabra debe aparecer en "apellidos nombres dni"
     private boolean coincideConBusqueda(SocioEstadoResponse estado, List<String> palabras) {
         if (palabras.isEmpty()) {
             return true;
         }
         String texto = normalizar(estado.apellidos() + " " + estado.nombres() + " " + estado.dni());
-        return palabras.stream().allMatch(texto::contains);
+
+        return palabras.stream().allMatch(palabra -> {
+            if (palabra.matches("\\d{1,5}")) {
+                return String.valueOf(estado.id()).equals(palabra);
+            }
+            return texto.contains(palabra);
+        });
     }
 
     // Pasa a minusculas y quita tildes: "García" -> "garcia"

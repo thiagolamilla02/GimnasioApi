@@ -8,6 +8,8 @@ public record SocioEstadoResponse(
         String nombres,
         String dni,
         String telefono,
+        String domicilio,
+        boolean aptoFisico,
         boolean activo,
         LocalDate ultimoMesPagado,
         boolean debe,

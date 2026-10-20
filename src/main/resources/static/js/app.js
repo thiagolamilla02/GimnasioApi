@@ -13,6 +13,9 @@ const VISTAS = {
     cobranza: {filtro: "activos", orden: "apellido"},
     socios: {filtro: "todos", orden: "apellido"}
 };
+
+const encabezadoTabla = document.getElementById("encabezado-tabla");
+
 let vista = "cobranza";
 
 // ---------- Elementos de la pagina ----------
@@ -77,7 +80,44 @@ async function cargarSocios() {
     }
 }
 
+// Columnas que se muestran en cada pestaña (la columna "Acciones" se agrega siempre al final)
+const COLUMNAS = {
+    cobranza: [
+        {titulo: "ID", celda: (s) => crearCelda(String(s.id))},
+        {titulo: "Apellido y nombre", celda: (s) => crearCelda(nombreCompleto(s))},
+        {titulo: "Teléfono", celda: (s) => crearCelda(s.telefono || "-")},
+        {titulo: "Estado", celda: (s) => crearCeldaEstado(s)},
+        {titulo: "Último mes pagado", celda: (s) => crearCelda(formatearMes(s.ultimoMesPagado))}
+    ],
+    socios: [
+        {titulo: "ID", celda: (s) => crearCelda(String(s.id))},
+        {titulo: "DNI", celda: (s) => crearCelda(s.dni)},
+        {titulo: "Nombres", celda: (s) => crearCelda(s.nombres)},
+        {titulo: "Apellidos", celda: (s) => crearCelda(s.apellidos)},
+        {titulo: "Teléfono", celda: (s) => crearCelda(s.telefono || "-")},
+        {titulo: "Domicilio", celda: (s) => crearCelda(s.domicilio || "-")},
+        {titulo: "Apto físico", celda: (s) => crearCeldaAptoFisico(s)},
+        {titulo: "Estado", celda: (s) => crearCeldaEstado(s)}
+    ]
+};
+
+function pintarEncabezado() {
+    encabezadoTabla.replaceChildren();
+
+    for (const columna of COLUMNAS[vista]) {
+        const th = document.createElement("th");
+        th.textContent = columna.titulo;
+        encabezadoTabla.appendChild(th);
+    }
+
+    const thAcciones = document.createElement("th");
+    thAcciones.classList.add("text-end");
+    thAcciones.textContent = "Acciones";
+    encabezadoTabla.appendChild(thAcciones);
+}
+
 function pintarTabla(socios) {
+    pintarEncabezado();
     tablaSocios.replaceChildren();
     sociosPorId.clear();
 
@@ -85,16 +125,9 @@ function pintarTabla(socios) {
         sociosPorId.set(socio.id, socio);
 
         const fila = document.createElement("tr");
-
-        fila.appendChild(crearCelda(nombreCompleto(socio)));
-        fila.appendChild(crearCelda(socio.dni));
-        fila.appendChild(crearCelda(socio.telefono || "-"));
-
-        const celdaEstado = document.createElement("td");
-        celdaEstado.appendChild(crearBadgeEstado(socio));
-        fila.appendChild(celdaEstado);
-
-        fila.appendChild(crearCelda(formatearMes(socio.ultimoMesPagado)));
+        for (const columna of COLUMNAS[vista]) {
+            fila.appendChild(columna.celda(socio));
+        }
         fila.appendChild(crearCeldaAcciones(socio));
 
         tablaSocios.appendChild(fila);
@@ -131,6 +164,28 @@ function crearBadgeEstado(socio) {
         badge.textContent = "Al día";
     }
     return badge;
+}
+
+function crearCeldaEstado(socio) {
+    const celda = document.createElement("td");
+    celda.appendChild(crearBadgeEstado(socio));
+    return celda;
+}
+
+function crearCeldaAptoFisico(socio) {
+    const celda = document.createElement("td");
+    const badge = document.createElement("span");
+    badge.classList.add("badge");
+
+    if (socio.aptoFisico) {
+        badge.classList.add("text-bg-primary");
+        badge.textContent = "Sí";
+    } else {
+        badge.classList.add("text-bg-warning");
+        badge.textContent = "No";
+    }
+    celda.appendChild(badge);
+    return celda;
 }
 
 // Botones de cada fila. Cambian segun la vista.

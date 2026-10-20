@@ -16,3 +16,31 @@ body {
     font-size: 1.1rem;
     padding: 0.6rem 1.2rem;
 }
+
+/* Campos de texto y listas: borde mas marcado para que se vean sobre fondo blanco */
+.form-control,
+.form-select {
+    border-color: #adb5bd;
+}
+
+/* Casilla del apto fisico: mas grande y con borde visible */
+.form-check {
+    padding-left: 2.2em;
+}
+
+.form-check-input {
+    width: 1.4em;
+    height: 1.4em;
+    margin-top: 0.1em;
+    margin-left: -2.2em;
+    border: 2px solid #6c757d;
+}
+
+.form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.form-check-label {
+    font-size: 1.1rem;
+}
