@@ -8,6 +8,12 @@ import com.gimnasio.api.repository.IPagoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.gimnasio.api.dto.PagoDetalleResponse;
+import com.gimnasio.api.dto.PagosDelMesResponse;
+import com.gimnasio.api.exception.ParametroInvalidoException;
+import java.math.BigDecimal;
+import java.time.YearMonth;
+import java.time.format.DateTimeParseException;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -91,5 +97,64 @@ public class PagoService implements IPagoService {
     public void deletePago(Long socioId, Long pagoId) {
         Pago pago = findPago(socioId, pagoId);
         pagoRepo.delete(pago);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PagosDelMesResponse getPagosDelMes(String mes, String criterio) {
+        YearMonth periodo = leerMes(mes);
+        String criterioNormalizado = criterio.toLowerCase();
+
+        List<Pago> pagos = switch (criterioNormalizado) {
+            case "cobro" -> pagoRepo.findByFechaPagoBetweenOrderByFechaPagoDescIdDesc(
+                    periodo.atDay(1), periodo.atEndOfMonth());
+            case "periodo" -> pagoRepo.findByMesPagadoOrderByFechaPagoDescIdDesc(periodo.atDay(1));
+            default -> throw new ParametroInvalidoException("criterio", criterio, "cobro, periodo");
+        };
+
+        List<PagoDetalleResponse> detalle = pagos.stream().map(this::aDetalle).toList();
+
+        return new PagosDelMesResponse(
+                periodo.toString(),
+                criterioNormalizado,
+                detalle.size(),
+                sumar(pagos, null),
+                sumar(pagos, Pago.MedioPago.EFECTIVO),
+                sumar(pagos, Pago.MedioPago.TRANSFERENCIA),
+                detalle
+        );
+    }
+
+    // Si no mandan mes, se usa el mes actual. Formato esperado: 2026-10
+    private YearMonth leerMes(String mes) {
+        if (mes == null || mes.isBlank()) {
+            return YearMonth.now(ZONA);
+        }
+        try {
+            return YearMonth.parse(mes.trim());
+        } catch (DateTimeParseException e) {
+            throw new ParametroInvalidoException("mes", mes, "formato AAAA-MM, por ejemplo 2026-10");
+        }
+    }
+
+    private PagoDetalleResponse aDetalle(Pago pago) {
+        return new PagoDetalleResponse(
+                pago.getId(),
+                pago.getSocio().getId(),
+                pago.getSocio().getApellidos(),
+                pago.getSocio().getNombres(),
+                pago.getMesPagado(),
+                pago.getFechaPago(),
+                pago.getMonto(),
+                pago.getMedioPago()
+        );
+    }
+
+    // Suma los montos; si medio es null, suma todos
+    private BigDecimal sumar(List<Pago> pagos, Pago.MedioPago medio) {
+        return pagos.stream()
+                .filter(pago -> medio == null || pago.getMedioPago() == medio)
+                .map(Pago::getMonto)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }

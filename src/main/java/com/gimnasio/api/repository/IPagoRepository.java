@@ -35,5 +35,13 @@ public interface IPagoRepository extends JpaRepository<Pago, Long> {
     @Query("select new com.gimnasio.api.dto.UltimoPagoDto(p.socio.id, max(p.mesPagado)) "
             + "from Pago p group by p.socio.id")
     List<UltimoPagoDto> findUltimoPagoPorSocio();
+
+    // Pagos cobrados dentro de un rango de fechas (de mas reciente a mas antiguo)
+    @EntityGraph(attributePaths = "socio")
+    List<Pago> findByFechaPagoBetweenOrderByFechaPagoDescIdDesc(LocalDate desde, LocalDate hasta);
+
+    // Pagos que corresponden a un mes (aunque se hayan cobrado despues)
+    @EntityGraph(attributePaths = "socio")
+    List<Pago> findByMesPagadoOrderByFechaPagoDescIdDesc(LocalDate mesPagado);
 }
 

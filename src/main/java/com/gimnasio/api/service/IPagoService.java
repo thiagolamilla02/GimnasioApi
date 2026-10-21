@@ -1,5 +1,6 @@
 package com.gimnasio.api.service;
 
+import com.gimnasio.api.dto.PagosDelMesResponse;
 import com.gimnasio.api.model.Pago;
 
 import java.util.List;
@@ -22,4 +23,7 @@ public interface IPagoService {
 
     //eliminacion de un pago
     public void deletePago(Long socioId, Long pagoId);
+
+    //pagos de todos los socios en un mes (criterio: "cobro" o "periodo")
+    public PagosDelMesResponse getPagosDelMes(String mes, String criterio);
 }

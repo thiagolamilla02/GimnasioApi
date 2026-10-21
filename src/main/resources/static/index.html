@@ -27,7 +27,7 @@
                 <button type="button" class="nav-link" data-vista="socios">Socios</button>
             </li>
             <li class="nav-item">
-                <button type="button" class="nav-link disabled" disabled title="Próximamente">Pagos</button>
+                <button type="button" class="nav-link" data-vista="pagos">Pagos</button>
             </li>
         </ul>
         <button type="button" id="btn-nuevo-socio" class="btn btn-primary btn-lg">+ Nuevo socio</button>
@@ -35,6 +35,83 @@
 
     <div id="mensaje-exito" class="alert alert-success d-none" role="alert"></div>
     <div id="mensaje-error" class="alert alert-danger d-none" role="alert"></div>
+
+    <section id="seccion-socios">
+        <p id="sin-resultados" class="text-center text-muted d-none">
+            No hay socios que coincidan con la búsqueda.
+        </p>
+    </section>
+
+    <section id="seccion-pagos" class="d-none">
+
+        <div id="todos-pagos-error" class="alert alert-danger d-none" role="alert"></div>
+
+        <div class="row g-3 align-items-end mb-3">
+            <div class="col-12 col-lg-auto">
+                <label class="form-label d-block">Mes</label>
+                <div class="d-flex gap-2">
+                    <button type="button" id="btn-mes-anterior" class="btn btn-outline-secondary btn-lg"
+                            aria-label="Mes anterior">‹</button>
+                    <select id="pagos-filtro-mes" class="form-select form-select-lg" aria-label="Mes"></select>
+                    <select id="pagos-filtro-anio" class="form-select form-select-lg" aria-label="Año"></select>
+                    <button type="button" id="btn-mes-siguiente" class="btn btn-outline-secondary btn-lg"
+                            aria-label="Mes siguiente">›</button>
+                </div>
+            </div>
+            <div class="col-12 col-lg">
+                <label for="pagos-filtro-criterio" class="form-label">Ver por</label>
+                <select id="pagos-filtro-criterio" class="form-select form-select-lg">
+                    <option value="cobro">Fecha en que se cobró</option>
+                    <option value="periodo">Mes que se pagó</option>
+                </select>
+            </div>
+        </div>
+
+        <p id="todos-pagos-descripcion" class="text-muted"></p>
+
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-lg-3">
+                <div class="card h-100"><div class="card-body">
+                    <div class="text-muted small">Total</div>
+                    <div id="total-cobrado" class="fs-4 fw-bold">-</div>
+                </div></div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="card h-100"><div class="card-body">
+                    <div class="text-muted small">En efectivo</div>
+                    <div id="total-efectivo" class="fs-4 fw-bold">-</div>
+                </div></div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="card h-100"><div class="card-body">
+                    <div class="text-muted small">Por transferencia</div>
+                    <div id="total-transferencia" class="fs-4 fw-bold">-</div>
+                </div></div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="card h-100"><div class="card-body">
+                    <div class="text-muted small">Cantidad de pagos</div>
+                    <div id="total-cantidad" class="fs-4 fw-bold">-</div>
+                </div></div>
+            </div>
+        </div>
+
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+            <tr>
+                <th>ID</th>
+                <th>Socio</th>
+                <th>Mes pagado</th>
+                <th>Fecha de pago</th>
+                <th>Medio</th>
+                <th class="text-end">Monto</th>
+            </tr>
+            </thead>
+            <tbody id="tabla-todos-pagos"></tbody>
+        </table>
+
+        <p id="todos-pagos-vacio" class="text-center text-muted d-none">No hay pagos para este mes.</p>
+    </section>
 
     <!-- Buscador, filtro y orden -->
     <div class="row g-2 mb-3">

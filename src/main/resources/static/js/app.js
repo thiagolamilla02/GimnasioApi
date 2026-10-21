@@ -16,6 +16,10 @@ const VISTAS = {
 
 const encabezadoTabla = document.getElementById("encabezado-tabla");
 
+const seccionSocios = document.getElementById("seccion-socios");
+
+const seccionPagos = document.getElementById("seccion-pagos");
+
 let vista = "cobranza";
 
 // ---------- Elementos de la pagina ----------
@@ -253,6 +257,18 @@ function cambiarVista(nueva) {
     for (const boton of pestanas.querySelectorAll("[data-vista]")) {
         boton.classList.toggle("active", boton.dataset.vista === nueva);
     }
+
+    // La pestaña Pagos tiene su propio contenido; las otras dos comparten la tabla de socios
+    const esPagos = nueva === "pagos";
+    seccionSocios.classList.toggle("d-none", esPagos);
+    seccionPagos.classList.toggle("d-none", !esPagos);
+    btnNuevoSocio.classList.toggle("d-none", esPagos);
+
+    if (esPagos) {
+        cargarPagosDelMes();
+        return;
+    }
+
     inputBuscar.value = "";
     selectFiltro.value = VISTAS[nueva].filtro;
     selectOrden.value = VISTAS[nueva].orden;
@@ -635,14 +651,14 @@ function sugerirMes(ultimoMesPagado, mesesAdeudados) {
     return sumarMeses(mesActualIso(), -(Math.max(mesesAdeudados, 1) - 1));
 }
 
-// Agrega un año a la lista si todavia no esta (por ejemplo, al corregir un pago antiguo)
-function asegurarAnio(anio) {
-    const opciones = Array.from(selectPagoAnio.options);
+// Agrega un año a una lista si todavia no esta (por defecto, la del formulario de pago)
+function asegurarAnio(anio, select = selectPagoAnio) {
+    const opciones = Array.from(select.options);
     if (opciones.some((opcion) => Number(opcion.value) === anio)) {
         return;
     }
     const posterior = opciones.find((opcion) => Number(opcion.value) > anio);
-    selectPagoAnio.add(new Option(String(anio), String(anio)), posterior || null);
+    select.add(new Option(String(anio), String(anio)), posterior || null);
 }
 
 function establecerMesPago(fechaIso) {
@@ -981,6 +997,106 @@ modalPagosElemento.addEventListener("hidden.bs.modal", () => {
     volverALista = false;
     pagosDelSocio.clear();
 });
+
+// ---------- Pestaña Pagos: pagos de todos los socios ----------
+
+const selectPagosMes = document.getElementById("pagos-filtro-mes");
+const selectPagosAnio = document.getElementById("pagos-filtro-anio");
+const selectPagosCriterio = document.getElementById("pagos-filtro-criterio");
+const btnMesAnterior = document.getElementById("btn-mes-anterior");
+const btnMesSiguiente = document.getElementById("btn-mes-siguiente");
+const todosPagosError = document.getElementById("todos-pagos-error");
+const todosPagosDescripcion = document.getElementById("todos-pagos-descripcion");
+const tablaTodosPagos = document.getElementById("tabla-todos-pagos");
+const todosPagosVacio = document.getElementById("todos-pagos-vacio");
+const totalCobrado = document.getElementById("total-cobrado");
+const totalEfectivo = document.getElementById("total-efectivo");
+const totalTransferencia = document.getElementById("total-transferencia");
+const totalCantidad = document.getElementById("total-cantidad");
+
+// Listas de mes y de año del filtro
+MESES.forEach((nombre, indice) => {
+    const opcion = document.createElement("option");
+    opcion.value = String(indice + 1);
+    opcion.textContent = nombre.charAt(0).toUpperCase() + nombre.slice(1);
+    selectPagosMes.appendChild(opcion);
+});
+for (let anio = anioActual - 3; anio <= anioActual + 1; anio++) {
+    asegurarAnio(anio, selectPagosAnio);
+}
+establecerMesFiltro(mesActualIso());
+
+function establecerMesFiltro(fechaIso) {
+    const [anio, mes] = fechaIso.split("-").map(Number);
+    asegurarAnio(anio, selectPagosAnio);
+    selectPagosAnio.value = String(anio);
+    selectPagosMes.value = String(mes);
+}
+
+// Mes elegido en formato "2026-10"
+function mesSeleccionado() {
+    return selectPagosAnio.value + "-" + dosDigitos(selectPagosMes.value);
+}
+
+async function cargarPagosDelMes() {
+    const parametros = new URLSearchParams({
+        mes: mesSeleccionado(),
+        criterio: selectPagosCriterio.value
+    });
+
+    try {
+        const respuesta = await fetch("/pagos?" + parametros.toString());
+        if (!respuesta.ok) {
+            throw new Error("el servidor respondió " + respuesta.status);
+        }
+        pintarPagosDelMes(await respuesta.json());
+        todosPagosError.classList.add("d-none");
+    } catch (error) {
+        todosPagosError.textContent = "No se pudieron cargar los pagos (" + error.message + ").";
+        todosPagosError.classList.remove("d-none");
+    }
+}
+
+function pintarPagosDelMes(datos) {
+    totalCobrado.textContent = formatearMonto(datos.total);
+    totalEfectivo.textContent = formatearMonto(datos.totalEfectivo);
+    totalTransferencia.textContent = formatearMonto(datos.totalTransferencia);
+    totalCantidad.textContent = String(datos.cantidad);
+
+    const nombreMes = formatearMes(mesSeleccionado() + "-01");
+    todosPagosDescripcion.textContent = datos.criterio === "cobro"
+        ? "Pagos recibidos durante " + nombreMes + " (según la fecha en que se cobraron)."
+        : "Pagos correspondientes a la cuota de " + nombreMes + " (aunque se hayan cobrado en otro mes).";
+
+    tablaTodosPagos.replaceChildren();
+    for (const pago of datos.pagos) {
+        const fila = document.createElement("tr");
+        fila.appendChild(crearCelda(String(pago.socioId)));
+        fila.appendChild(crearCelda(pago.apellidos + ", " + pago.nombres));
+        fila.appendChild(crearCelda(formatearMes(pago.mesPagado)));
+        fila.appendChild(crearCelda(formatearFecha(pago.fechaPago)));
+        fila.appendChild(crearCelda(MEDIOS[pago.medioPago] || pago.medioPago));
+
+        const celdaMonto = crearCelda(formatearMonto(pago.monto));
+        celdaMonto.classList.add("text-end");
+        fila.appendChild(celdaMonto);
+
+        tablaTodosPagos.appendChild(fila);
+    }
+    todosPagosVacio.classList.toggle("d-none", datos.pagos.length > 0);
+}
+
+// Pasa al mes anterior (-1) o siguiente (+1)
+function moverMes(cantidad) {
+    establecerMesFiltro(sumarMeses(mesSeleccionado() + "-01", cantidad));
+    cargarPagosDelMes();
+}
+
+btnMesAnterior.addEventListener("click", () => moverMes(-1));
+btnMesSiguiente.addEventListener("click", () => moverMes(1));
+selectPagosMes.addEventListener("change", cargarPagosDelMes);
+selectPagosAnio.addEventListener("change", cargarPagosDelMes);
+selectPagosCriterio.addEventListener("change", cargarPagosDelMes);
 
 // ---------- Mensajes ----------
 
