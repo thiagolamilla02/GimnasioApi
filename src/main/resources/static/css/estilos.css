@@ -46,13 +46,46 @@ body {
 }
 
 /* ----- Impresion ----- */
+@page {
+    size: A4 landscape; /* hoja horizontal: entran todas las columnas */
+    margin: 10mm;
+}
+
 @media print {
     body {
         background: #fff;
     }
 
+    /* Todo lo que no debe salir en el papel */
+    nav.navbar,
+    #barra-superior,
+    #filtros-listado,
+    #filtros-pagos,
+    #mensaje-exito,
+    #mensaje-error,
+    #todos-pagos-error {
+        display: none !important;
+    }
+
+    /* El contenido usa todo el ancho de la hoja (sin el ancho maximo ni los margenes de Bootstrap) */
+    .container,
+    .container-fluid {
+        max-width: none !important;
+        width: 100% !important;
+        margin: 0 !important;
+    }
+
     table {
-        font-size: 0.85rem;
+        width: 100% !important;
+        font-size: 0.8rem;
+    }
+
+    /* Los textos largos pasan a otra linea en vez de ensanchar la tabla */
+    th,
+    td {
+        white-space: normal !important;
+        overflow-wrap: break-word;
+        padding: 0.25rem 0.4rem !important;
     }
 
     /* Repite los titulos de la tabla en cada pagina */

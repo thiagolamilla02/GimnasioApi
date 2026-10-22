@@ -9,7 +9,7 @@
 </head>
 <body>
 
-<nav class="navbar navbar-dark bg-dark mb-3">
+<nav class="navbar navbar-dark bg-dark mb-3 d-print-none">
     <div class="container">
         <span class="navbar-brand mb-0 h1">Gestión de socios</span>
     </div>
@@ -23,7 +23,7 @@
     </div>
 
     <!-- Pestañas y boton de nuevo socio -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div id="barra-superior" class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4 d-print-none">
         <ul class="nav nav-pills" id="pestanas">
             <li class="nav-item">
                 <button type="button" class="nav-link active" data-vista="cobranza">Cobranza</button>
@@ -49,7 +49,7 @@
     <!-- ===== Cobranza y Socios: comparten esta seccion ===== -->
     <section id="seccion-socios">
 
-        <div class="row g-2 mb-3">
+        <div id="filtros-listado" class="row g-2 mb-3 d-print-none">
             <div class="col-12 col-md-6">
                 <label for="buscar" class="form-label">Buscar</label>
                 <input type="search" id="buscar" class="form-control form-control-lg"
@@ -102,7 +102,7 @@
 
         <div id="todos-pagos-error" class="alert alert-danger d-none" role="alert"></div>
 
-        <div class="row g-3 align-items-end mb-3">
+        <div id="filtros-pagos" class="row g-3 align-items-end mb-3 d-print-none">
             <div class="col-12 col-lg-auto">
                 <label class="form-label d-block">Mes</label>
                 <div class="d-flex gap-2">
