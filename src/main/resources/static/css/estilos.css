@@ -44,3 +44,31 @@ body {
 .form-check-label {
     font-size: 1.1rem;
 }
+
+/* ----- Impresion ----- */
+@media print {
+    body {
+        background: #fff;
+    }
+
+    table {
+        font-size: 0.85rem;
+    }
+
+    /* Repite los titulos de la tabla en cada pagina */
+    thead {
+        display: table-header-group;
+    }
+
+    tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    /* Las etiquetas de estado se leen aunque la impresora no use colores de fondo */
+    .badge {
+        color: #000 !important;
+        background: none !important;
+        border: 1px solid #000;
+    }
+}

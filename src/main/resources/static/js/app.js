@@ -115,7 +115,7 @@ function pintarEncabezado() {
     }
 
     const thAcciones = document.createElement("th");
-    thAcciones.classList.add("text-end");
+    thAcciones.classList.add("text-end", "d-print-none");
     thAcciones.textContent = "Acciones";
     encabezadoTabla.appendChild(thAcciones);
 }
@@ -199,7 +199,7 @@ function crearCeldaAptoFisico(socio) {
 function crearCeldaAcciones(socio) {
     const id = Number(socio.id);
     const celda = document.createElement("td");
-    celda.classList.add("text-end");
+    celda.classList.add("text-end", "d-print-none");
 
     if (vista === "cobranza") {
         celda.innerHTML = `
@@ -262,7 +262,7 @@ function cambiarVista(nueva) {
     const esPagos = nueva === "pagos";
     seccionSocios.classList.toggle("d-none", esPagos);
     seccionPagos.classList.toggle("d-none", !esPagos);
-    btnNuevoSocio.classList.toggle("d-none", esPagos);
+    btnImportarExcel.classList.toggle("d-none", nueva !== "socios");
 
     if (esPagos) {
         cargarPagosDelMes();
@@ -1097,6 +1097,246 @@ btnMesSiguiente.addEventListener("click", () => moverMes(1));
 selectPagosMes.addEventListener("change", cargarPagosDelMes);
 selectPagosAnio.addEventListener("change", cargarPagosDelMes);
 selectPagosCriterio.addEventListener("change", cargarPagosDelMes);
+
+// ---------- Importar socios desde un Excel ----------
+
+const TAMANIO_MAXIMO_EXCEL = 5 * 1024 * 1024; // 5 MB (igual que el limite del servidor)
+
+const btnImportarExcel = document.getElementById("btn-importar-excel");
+const modalImportar = new bootstrap.Modal(document.getElementById("modal-importar"));
+const inputArchivoExcel = document.getElementById("importar-archivo");
+const inputFechaAlta = document.getElementById("importar-fecha-alta");
+const importarError = document.getElementById("importar-error");
+const importarInforme = document.getElementById("importar-informe");
+const importarLeyenda = document.getElementById("importar-leyenda");
+const informeNuevos = document.getElementById("informe-nuevos");
+const informeExistentes = document.getElementById("informe-existentes");
+const informeErrores = document.getElementById("informe-errores");
+const detalleErrores = document.getElementById("detalle-errores");
+const detalleOmitidos = document.getElementById("detalle-omitidos");
+const tablaInformeErrores = document.getElementById("tabla-informe-errores");
+const tablaInformeOmitidos = document.getElementById("tabla-informe-omitidos");
+const btnRevisar = document.getElementById("btn-revisar-importacion");
+const btnConfirmarImportacion = document.getElementById("btn-confirmar-importacion");
+
+function abrirImportacion() {
+    inputArchivoExcel.value = "";
+    inputFechaAlta.value = hoyIso();
+    reiniciarInforme();
+    modalImportar.show();
+}
+
+// Oculta el informe y el boton "Importar": hay que volver a revisar el archivo
+function reiniciarInforme() {
+    importarError.classList.add("d-none");
+    importarInforme.classList.add("d-none");
+    btnConfirmarImportacion.classList.add("d-none");
+}
+
+function mostrarErrorImportar(texto) {
+    importarError.textContent = texto;
+    importarError.classList.remove("d-none");
+}
+
+// Envia el archivo al servidor. guardar=false: solo revisa; guardar=true: crea los socios.
+// Devuelve el informe, o null si hubo un problema (el mensaje ya queda en pantalla).
+async function enviarExcel(guardar) {
+    const archivo = inputArchivoExcel.files[0];
+    if (!archivo) {
+        mostrarErrorImportar("Elegí un archivo de Excel.");
+        return null;
+    }
+    if (archivo.size > TAMANIO_MAXIMO_EXCEL) {
+        mostrarErrorImportar("El archivo es demasiado grande (máximo 5 MB).");
+        return null;
+    }
+
+    const formulario = new FormData();
+    formulario.append("archivo", archivo);
+
+    const parametros = new URLSearchParams({guardar: String(guardar)});
+    if (inputFechaAlta.value) {
+        parametros.set("fechaAlta", inputFechaAlta.value);
+    }
+
+    try {
+        // No se indica Content-Type: el navegador lo completa solo para los archivos
+        const respuesta = await fetch("/importacion/socios?" + parametros.toString(),
+            {method: "POST", body: formulario});
+
+        if (!respuesta.ok) {
+            mostrarErrorImportar(await leerMensajeDeError(respuesta));
+            return null;
+        }
+        return await respuesta.json();
+    } catch (error) {
+        mostrarErrorImportar("No se pudo conectar con el servidor.");
+        return null;
+    }
+}
+
+function pintarInforme(informe) {
+    informeNuevos.textContent = informe.nuevos;
+    informeExistentes.textContent = informe.existentes;
+    informeErrores.textContent = informe.conErrores;
+
+    rellenarAvisos(tablaInformeErrores, informe.errores);
+    rellenarAvisos(tablaInformeOmitidos, informe.omitidos);
+    detalleErrores.classList.toggle("d-none", informe.errores.length === 0);
+    detalleOmitidos.classList.toggle("d-none", informe.omitidos.length === 0);
+    detalleErrores.open = informe.errores.length > 0;
+
+    importarLeyenda.textContent = "Se leyeron " + informe.filasLeidas + " filas. Todavía no se guardó nada.";
+    importarInforme.classList.remove("d-none");
+
+    if (informe.nuevos > 0) {
+        btnConfirmarImportacion.textContent =
+            "Importar " + informe.nuevos + (informe.nuevos === 1 ? " socio" : " socios");
+        btnConfirmarImportacion.classList.remove("d-none");
+    }
+}
+
+function rellenarAvisos(cuerpoTabla, avisos) {
+    cuerpoTabla.replaceChildren();
+    for (const aviso of avisos) {
+        const fila = document.createElement("tr");
+        fila.appendChild(crearCelda(String(aviso.fila)));
+        fila.appendChild(crearCelda(aviso.mensaje));
+        cuerpoTabla.appendChild(fila);
+    }
+}
+
+btnImportarExcel.addEventListener("click", abrirImportacion);
+
+// Si cambia el archivo o la fecha, el informe anterior ya no vale
+inputArchivoExcel.addEventListener("change", reiniciarInforme);
+inputFechaAlta.addEventListener("change", reiniciarInforme);
+
+btnRevisar.addEventListener("click", async () => {
+    reiniciarInforme();
+    btnRevisar.disabled = true;
+    try {
+        const informe = await enviarExcel(false);
+        if (informe) {
+            pintarInforme(informe);
+        }
+    } finally {
+        btnRevisar.disabled = false;
+    }
+});
+
+btnConfirmarImportacion.addEventListener("click", async () => {
+    btnConfirmarImportacion.disabled = true; // evita importar dos veces con un doble clic
+    btnRevisar.disabled = true;
+    try {
+        const resultado = await enviarExcel(true);
+        if (resultado) {
+            modalImportar.hide();
+            mostrarExito("Importación terminada: " + resultado.nuevos + " socios nuevos, "
+                + resultado.existentes + " ya existían y " + resultado.conErrores + " filas con errores.");
+            await cargarSocios();
+        }
+    } finally {
+        btnConfirmarImportacion.disabled = false;
+        btnRevisar.disabled = false;
+    }
+});
+
+// ---------- Exportar a Excel e imprimir ----------
+
+const btnExportarSocios = document.getElementById("btn-exportar-socios");
+const btnExportarPagos = document.getElementById("btn-exportar-pagos");
+const impresionTitulo = document.getElementById("impresion-titulo");
+const impresionDetalle = document.getElementById("impresion-detalle");
+
+// Descarga un archivo pedido por GET sin salir de la pagina.
+// Si el servidor responde con un error, se muestra el mensaje con la funcion "mostrarFallo".
+async function descargarExcel(url, nombreArchivo, mostrarFallo) {
+    try {
+        const respuesta = await fetch(url);
+        if (!respuesta.ok) {
+            mostrarFallo(await leerMensajeDeError(respuesta));
+            return;
+        }
+
+        const archivo = await respuesta.blob();
+        const direccion = URL.createObjectURL(archivo);
+
+        const enlace = document.createElement("a");
+        enlace.href = direccion;
+        enlace.download = nombreArchivo;
+        document.body.appendChild(enlace);
+        enlace.click();
+        enlace.remove();
+
+        // Se libera la direccion temporal un poco despues, cuando el navegador ya empezo a descargar
+        setTimeout(() => URL.revokeObjectURL(direccion), 10000);
+    } catch (error) {
+        mostrarFallo("No se pudo conectar con el servidor.");
+    }
+}
+
+// Cobranza y Socios: se exporta lo que se ve (mismo buscador, filtro y orden)
+btnExportarSocios.addEventListener("click", () => {
+    const parametros = new URLSearchParams({
+        filtro: selectFiltro.value,
+        orden: selectOrden.value
+    });
+    const texto = inputBuscar.value.trim();
+    if (texto) {
+        parametros.set("buscar", texto);
+    }
+    descargarExcel("/socios/estado/exportar?" + parametros.toString(),
+        "socios-" + hoyIso() + ".xlsx", mostrarError);
+});
+
+// Pagos: se exporta el mes elegido
+btnExportarPagos.addEventListener("click", () => {
+    const parametros = new URLSearchParams({
+        mes: mesSeleccionado(),
+        criterio: selectPagosCriterio.value
+    });
+    descargarExcel("/pagos/exportar?" + parametros.toString(),
+        "pagos-" + mesSeleccionado() + ".xlsx", (texto) => {
+            todosPagosError.textContent = texto;
+            todosPagosError.classList.remove("d-none");
+        });
+});
+
+// ----- Imprimir -----
+
+const NOMBRES_DE_VISTA = {cobranza: "Cobranza", socios: "Listado de socios"};
+
+function textoElegido(select) {
+    return select.options[select.selectedIndex].textContent;
+}
+
+// Completa el titulo que solo se ve en el papel. Se ejecuta tambien con Ctrl+P.
+function prepararImpresion() {
+    const hoy = formatearFecha(hoyIso());
+
+    if (vista === "pagos") {
+        impresionTitulo.textContent = "Pagos de " + formatearMes(mesSeleccionado() + "-01");
+        impresionDetalle.textContent = textoElegido(selectPagosCriterio) + " · Impreso el " + hoy;
+        return;
+    }
+
+    const partes = ["Mostrar: " + textoElegido(selectFiltro), "Orden: " + textoElegido(selectOrden)];
+    const texto = inputBuscar.value.trim();
+    if (texto) {
+        partes.push("Búsqueda: " + texto);
+    }
+    partes.push("Impreso el " + hoy);
+
+    impresionTitulo.textContent = NOMBRES_DE_VISTA[vista];
+    impresionDetalle.textContent = partes.join(" · ");
+}
+
+window.addEventListener("beforeprint", prepararImpresion);
+
+for (const boton of document.querySelectorAll(".btn-imprimir")) {
+    boton.addEventListener("click", () => window.print());
+}
 
 // ---------- Mensajes ----------
 

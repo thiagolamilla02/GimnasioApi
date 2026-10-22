@@ -53,4 +53,9 @@ public class ManejadorDeErrores {
     public ProblemDetail parametroInvalido(ParametroInvalidoException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
+
+    @ExceptionHandler(ArchivoInvalidoException.class)
+    public ProblemDetail archivoInvalido(ArchivoInvalidoException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
 }

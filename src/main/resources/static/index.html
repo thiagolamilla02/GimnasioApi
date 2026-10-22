@@ -16,6 +16,11 @@
 </nav>
 
 <main class="container">
+    <!-- Solo se ve al imprimir -->
+    <div id="encabezado-impresion" class="d-none d-print-block mb-3">
+        <h4 id="impresion-titulo" class="mb-1"></h4>
+        <p id="impresion-detalle" class="text-muted mb-0"></p>
+    </div>
 
     <!-- Pestañas y boton de nuevo socio -->
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
@@ -30,18 +35,69 @@
                 <button type="button" class="nav-link" data-vista="pagos">Pagos</button>
             </li>
         </ul>
-        <button type="button" id="btn-nuevo-socio" class="btn btn-primary btn-lg">+ Nuevo socio</button>
+        <div class="d-flex flex-wrap gap-2">
+            <button type="button" id="btn-importar-excel" class="btn btn-outline-primary btn-lg d-none">
+                Importar desde Excel
+            </button>
+            <button type="button" id="btn-nuevo-socio" class="btn btn-primary btn-lg">+ Nuevo socio</button>
+        </div>
     </div>
 
     <div id="mensaje-exito" class="alert alert-success d-none" role="alert"></div>
     <div id="mensaje-error" class="alert alert-danger d-none" role="alert"></div>
 
+    <!-- ===== Cobranza y Socios: comparten esta seccion ===== -->
     <section id="seccion-socios">
+
+        <div class="row g-2 mb-3">
+            <div class="col-12 col-md-6">
+                <label for="buscar" class="form-label">Buscar</label>
+                <input type="search" id="buscar" class="form-control form-control-lg"
+                       placeholder="ID, apellido, nombre o DNI">
+            </div>
+            <div class="col-6 col-md-3">
+                <label for="filtro" class="form-label">Mostrar</label>
+                <select id="filtro" class="form-select form-select-lg">
+                    <option value="activos">Activos</option>
+                    <option value="deudores">Deudores</option>
+                    <option value="al-dia">Al día</option>
+                    <option value="bajas">De baja</option>
+                    <option value="todos">Todos</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <label for="orden" class="form-label">Ordenar por</label>
+                <select id="orden" class="form-select form-select-lg">
+                    <option value="apellido">Apellido</option>
+                    <option value="moroso-antiguo">Moroso más antiguo</option>
+                    <option value="moroso-reciente">Moroso más reciente</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+            <p id="contador" class="text-muted mb-0"></p>
+            <div class="d-flex gap-2 d-print-none">
+                <button type="button" id="btn-exportar-socios" class="btn btn-outline-success">Exportar a Excel</button>
+                <button type="button" class="btn btn-outline-secondary btn-imprimir">Imprimir</button>
+            </div>
+        </div>
+
+        <!-- Sin "table-responsive": ese contenedor corta los menus desplegables -->
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+            <tr id="encabezado-tabla"></tr>
+            </thead>
+            <tbody id="tabla-socios"></tbody>
+        </table>
+
         <p id="sin-resultados" class="text-center text-muted d-none">
             No hay socios que coincidan con la búsqueda.
         </p>
+
     </section>
 
+    <!-- ===== Pagos de todos los socios ===== -->
     <section id="seccion-pagos" class="d-none">
 
         <div id="todos-pagos-error" class="alert alert-danger d-none" role="alert"></div>
@@ -67,7 +123,13 @@
             </div>
         </div>
 
-        <p id="todos-pagos-descripcion" class="text-muted"></p>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <p id="todos-pagos-descripcion" class="text-muted mb-0"></p>
+            <div class="d-flex gap-2 d-print-none">
+                <button type="button" id="btn-exportar-pagos" class="btn btn-outline-success">Exportar a Excel</button>
+                <button type="button" class="btn btn-outline-secondary btn-imprimir">Imprimir</button>
+            </div>
+        </div>
 
         <div class="row g-3 mb-4">
             <div class="col-6 col-lg-3">
@@ -111,48 +173,8 @@
         </table>
 
         <p id="todos-pagos-vacio" class="text-center text-muted d-none">No hay pagos para este mes.</p>
+
     </section>
-
-    <!-- Buscador, filtro y orden -->
-    <div class="row g-2 mb-3">
-        <div class="col-12 col-md-6">
-            <label for="buscar" class="form-label">Buscar</label>
-            <input type="search" id="buscar" class="form-control form-control-lg"
-                   placeholder="ID, apellido, nombre o DNI">
-        </div>
-        <div class="col-6 col-md-3">
-            <label for="filtro" class="form-label">Mostrar</label>
-            <select id="filtro" class="form-select form-select-lg">
-                <option value="activos">Activos</option>
-                <option value="deudores">Deudores</option>
-                <option value="al-dia">Al día</option>
-                <option value="bajas">De baja</option>
-                <option value="todos">Todos</option>
-            </select>
-        </div>
-        <div class="col-6 col-md-3">
-            <label for="orden" class="form-label">Ordenar por</label>
-            <select id="orden" class="form-select form-select-lg">
-                <option value="apellido">Apellido</option>
-                <option value="moroso-antiguo">Moroso más antiguo</option>
-                <option value="moroso-reciente">Moroso más reciente</option>
-            </select>
-        </div>
-    </div>
-
-    <p id="contador" class="text-muted"></p>
-
-    <!-- Sin "table-responsive": ese contenedor corta los menus desplegables -->
-    <table class="table table-hover align-middle">
-        <thead class="table-light">
-        <tr id="encabezado-tabla"></tr>
-        </thead>
-        <tbody id="tabla-socios"></tbody>
-    </table>
-
-    <p id="sin-resultados" class="text-center text-muted d-none">
-        No hay socios que coincidan con la búsqueda.
-    </p>
 
 </main>
 
@@ -331,6 +353,92 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+</div>
+
+<!-- Ventana: importar socios desde Excel -->
+<div class="modal fade" id="modal-importar" tabindex="-1" aria-labelledby="importar-titulo" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importar-titulo">Importar socios desde Excel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+
+            <div class="modal-body">
+                <div id="importar-error" class="alert alert-danger d-none" role="alert"></div>
+
+                <p class="text-muted">
+                    El archivo debe tener una fila de encabezados con las columnas <strong>Apellido</strong>,
+                    <strong>Nombres</strong> y <strong>DNI</strong> y, si las tiene, <strong>Domicilio</strong>
+                    y <strong>Teléfono</strong>. Primero se revisa el archivo y
+                    <strong>no se guarda nada</strong> hasta que lo confirmes.
+                </p>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-7">
+                        <label for="importar-archivo" class="form-label">Archivo de Excel (.xlsx o .xls)</label>
+                        <input type="file" id="importar-archivo" class="form-control"
+                               accept=".xlsx,.xls">
+                    </div>
+                    <div class="col-md-5">
+                        <label for="importar-fecha-alta" class="form-label">Fecha de alta de los socios</label>
+                        <input type="date" id="importar-fecha-alta" class="form-control">
+                    </div>
+                    <div class="col-12 form-text">
+                        Los socios importados no traen pagos. Con la fecha de hoy, figurarán como
+                        «Debe 1 mes» hasta que registres su pago de este mes.
+                    </div>
+                </div>
+
+                <div id="importar-informe" class="d-none">
+                    <p id="importar-leyenda" class="fw-semibold"></p>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-4">
+                            <div class="card h-100"><div class="card-body">
+                                <div class="text-muted small">Nuevos</div>
+                                <div id="informe-nuevos" class="fs-4 fw-bold text-success">0</div>
+                            </div></div>
+                        </div>
+                        <div class="col-4">
+                            <div class="card h-100"><div class="card-body">
+                                <div class="text-muted small">Ya existían</div>
+                                <div id="informe-existentes" class="fs-4 fw-bold">0</div>
+                            </div></div>
+                        </div>
+                        <div class="col-4">
+                            <div class="card h-100"><div class="card-body">
+                                <div class="text-muted small">Con errores</div>
+                                <div id="informe-errores" class="fs-4 fw-bold text-danger">0</div>
+                            </div></div>
+                        </div>
+                    </div>
+
+                    <details id="detalle-errores" class="mb-2">
+                        <summary class="text-danger">Filas con errores (no se importan)</summary>
+                        <table class="table table-sm mt-2">
+                            <thead class="table-light"><tr><th>Fila</th><th>Motivo</th></tr></thead>
+                            <tbody id="tabla-informe-errores"></tbody>
+                        </table>
+                    </details>
+
+                    <details id="detalle-omitidos">
+                        <summary>Socios que ya existían (se omiten)</summary>
+                        <table class="table table-sm mt-2">
+                            <thead class="table-light"><tr><th>Fila</th><th>Detalle</th></tr></thead>
+                            <tbody id="tabla-informe-omitidos"></tbody>
+                        </table>
+                    </details>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" id="btn-revisar-importacion" class="btn btn-primary">Revisar archivo</button>
+                <button type="button" id="btn-confirmar-importacion" class="btn btn-success d-none">Importar</button>
+            </div>
         </div>
     </div>
 </div>
