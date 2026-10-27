@@ -22,7 +22,8 @@ public class ImportacionController {
     public ImportacionResponse importarSocios(
             @RequestParam("archivo") MultipartFile archivo,
             @RequestParam(defaultValue = "false") boolean guardar,
-            @RequestParam(required = false) String fechaAlta) {
-        return importacionServ.importarSocios(archivo, guardar, fechaAlta);
+            @RequestParam(required = false) String fechaAlta,
+            @RequestParam(defaultValue = "true") boolean aptoFisico) {
+        return importacionServ.importarSocios(archivo, guardar, fechaAlta, aptoFisico);
     }
 }

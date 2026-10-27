@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ingresar - Gimnasio</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+
+<main class="container" style="max-width: 440px;">
+    <div class="card shadow-sm mt-5">
+        <div class="card-body p-4">
+            <h1 class="h4 mb-1">Gestión de socios</h1>
+            <p class="text-muted">Ingresá con tu usuario y contraseña.</p>
+
+            <div id="login-error" class="alert alert-danger d-none" role="alert"></div>
+
+            <form id="form-login" novalidate>
+                <div class="mb-3">
+                    <label for="usuario" class="form-label">Usuario</label>
+                    <input type="text" id="usuario" class="form-control form-control-lg"
+                           autocomplete="username" autofocus>
+                </div>
+                <div class="mb-3">
+                    <label for="clave" class="form-label">Contraseña</label>
+                    <input type="password" id="clave" class="form-control form-control-lg"
+                           autocomplete="current-password">
+                </div>
+                <button type="submit" id="btn-ingresar" class="btn btn-primary btn-lg w-100">Ingresar</button>
+            </form>
+        </div>
+    </div>
+</main>
+
+<script src="js/seguridad.js"></script>
+<script src="js/login.js"></script>
+</body>
+</html>

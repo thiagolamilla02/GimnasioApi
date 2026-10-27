@@ -1101,7 +1101,7 @@ selectPagosCriterio.addEventListener("change", cargarPagosDelMes);
 // ---------- Importar socios desde un Excel ----------
 
 const TAMANIO_MAXIMO_EXCEL = 5 * 1024 * 1024; // 5 MB (igual que el limite del servidor)
-
+const inputAptoImportar = document.getElementById("importar-apto-fisico");
 const btnImportarExcel = document.getElementById("btn-importar-excel");
 const modalImportar = new bootstrap.Modal(document.getElementById("modal-importar"));
 const inputArchivoExcel = document.getElementById("importar-archivo");
@@ -1120,6 +1120,7 @@ const btnRevisar = document.getElementById("btn-revisar-importacion");
 const btnConfirmarImportacion = document.getElementById("btn-confirmar-importacion");
 
 function abrirImportacion() {
+    inputAptoImportar.checked = true;
     inputArchivoExcel.value = "";
     inputFechaAlta.value = hoyIso();
     reiniciarInforme();
@@ -1156,6 +1157,7 @@ async function enviarExcel(guardar) {
 
     const parametros = new URLSearchParams({guardar: String(guardar)});
     if (inputFechaAlta.value) {
+        parametros.set("aptoFisico", String(inputAptoImportar.checked));
         parametros.set("fechaAlta", inputFechaAlta.value);
     }
 
@@ -1359,6 +1361,15 @@ function mostrarExito(texto) {
 }
 
 // ---------- Eventos ----------
+
+// Cerrar sesion: avisa al servidor y vuelve a la pantalla de login
+document.getElementById("btn-cerrar-sesion").addEventListener("click", async () => {
+    try {
+        await fetch("/logout", {method: "POST"});
+    } finally {
+        window.location.href = "/login.html";
+    }
+});
 
 // El buscador espera 300 ms despues de la ultima tecla (evita una llamada por letra)
 let temporizador;

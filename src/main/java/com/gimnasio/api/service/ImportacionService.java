@@ -60,13 +60,14 @@ public class ImportacionService implements IImportacionService {
 
     @Override
     @Transactional
-    public ImportacionResponse importarSocios(MultipartFile archivo, boolean guardar, String fechaAltaTexto) {
+    public ImportacionResponse importarSocios(MultipartFile archivo, boolean guardar,
+                                              String fechaAltaTexto, boolean aptoFisico) {
         validarArchivo(archivo);
         LocalDate fechaAlta = leerFechaAlta(fechaAltaTexto);
 
         try (Workbook libro = abrir(archivo)) {
             Tabla tabla = buscarTabla(libro);
-            return procesar(tabla, guardar, fechaAlta);
+            return procesar(tabla, guardar, fechaAlta, aptoFisico);
         } catch (IOException e) {
             throw new ArchivoInvalidoException("No se pudo leer el archivo.");
         }
@@ -74,7 +75,7 @@ public class ImportacionService implements IImportacionService {
 
     // ---------- Proceso principal ----------
 
-    private ImportacionResponse procesar(Tabla tabla, boolean guardar, LocalDate fechaAlta) {
+    private ImportacionResponse procesar(Tabla tabla, boolean guardar, LocalDate fechaAlta, boolean aptoFisico) {
         Sheet hoja = tabla.hoja();
         Map<String, Integer> columnas = tabla.columnas();
 
@@ -140,7 +141,7 @@ public class ImportacionService implements IImportacionService {
             socio.setDni(dni);
             socio.setDomicilio(domicilio);
             socio.setTelefono(telefono);
-            socio.setAptoFisico(false); // el Excel no trae este dato
+            socio.setAptoFisico(aptoFisico); // el Excel no trae este dato: lo elige quien importa
             socio.setActivo(true);
             socio.setFechaAlta(fechaAlta);
             nuevos.add(socio);
