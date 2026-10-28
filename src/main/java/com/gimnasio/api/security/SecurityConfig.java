@@ -36,7 +36,7 @@ public class SecurityConfig {
         // Las llamadas a la API sin sesion deben recibir 401, no una redireccion a la pagina de login
         RequestMatcher esLlamadaApi = peticion -> {
             String ruta = peticion.getRequestURI();
-            return ruta.startsWith("/socios") || ruta.startsWith("/pagos") || ruta.startsWith("/importacion");
+            return ruta.startsWith("/socios") || ruta.startsWith("/pagos") || ruta.startsWith("/importacion") || ruta.startsWith("/backup");
         };
 
         http

@@ -7,4 +7,7 @@ public interface IExportacionService {
 
     //Excel con los pagos de un mes de todos los socios, con totales
     public byte[] exportarPagos(String mes, String criterio);
+
+    //Excel con todos los socios y todos los pagos (copia de seguridad)
+    public byte[] exportarCopiaDeSeguridad();
 }

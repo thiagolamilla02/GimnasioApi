@@ -1362,6 +1362,11 @@ function mostrarExito(texto) {
 
 // ---------- Eventos ----------
 
+// Copia de seguridad: descarga un Excel con todos los socios y todos los pagos
+document.getElementById("btn-copia-seguridad").addEventListener("click", () => {
+    descargarExcel("/backup/exportar", "copia-de-seguridad-" + hoyIso() + ".xlsx", mostrarError);
+});
+
 // Cerrar sesion: avisa al servidor y vuelve a la pantalla de login
 document.getElementById("btn-cerrar-sesion").addEventListener("click", async () => {
     try {

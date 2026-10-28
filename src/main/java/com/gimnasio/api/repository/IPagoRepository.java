@@ -43,5 +43,9 @@ public interface IPagoRepository extends JpaRepository<Pago, Long> {
     // Pagos que corresponden a un mes (aunque se hayan cobrado despues)
     @EntityGraph(attributePaths = "socio")
     List<Pago> findByMesPagadoOrderByFechaPagoDescIdDesc(LocalDate mesPagado);
+
+    // Todos los pagos con su socio (para la copia de seguridad)
+    @EntityGraph(attributePaths = "socio")
+    List<Pago> findAllByOrderByMesPagadoDescIdDesc();
 }
 

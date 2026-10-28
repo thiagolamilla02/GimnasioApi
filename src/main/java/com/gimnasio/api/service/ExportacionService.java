@@ -16,6 +16,8 @@ import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.gimnasio.api.model.Socio;
+import com.gimnasio.api.repository.IPagoRepository;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -30,6 +32,9 @@ public class ExportacionService implements IExportacionService {
 
     @Autowired
     IPagoService pagoServ;
+
+    @Autowired
+    IPagoRepository pagoRepo;
 
     // ---------- Socios ----------
 
@@ -221,5 +226,75 @@ public class ExportacionService implements IExportacionService {
         CellStyle estilo = libro.createCellStyle();
         estilo.setDataFormat(libro.createDataFormat().getFormat(formato));
         return estilo;
+    }
+
+    // ---------- Copia de seguridad ----------
+
+    @Override
+    public byte[] exportarCopiaDeSeguridad() {
+        List<Socio> socios = socioServ.getSocios();
+        List<Pago> pagos = pagoRepo.findAllByOrderByMesPagadoDescIdDesc();
+
+        try (Workbook libro = new XSSFWorkbook(); ByteArrayOutputStream salida = new ByteArrayOutputStream()) {
+            CellStyle estiloEncabezado = crearEstiloEncabezado(libro);
+            CellStyle estiloFecha = crearEstiloConFormato(libro, "dd/mm/yyyy");
+            CellStyle estiloMes = crearEstiloConFormato(libro, "mmmm yyyy");
+            CellStyle estiloMonto = crearEstiloConFormato(libro, "\"$\" #,##0.00");
+
+            // Hoja 1: socios (con estos encabezados el archivo se puede volver a importar)
+            Sheet hojaSocios = libro.createSheet("Socios");
+            escribirEncabezado(hojaSocios, estiloEncabezado,
+                    new String[]{"ID", "Apellidos", "Nombres", "DNI", "Teléfono", "Domicilio",
+                            "Apto físico", "Activo", "Fecha de alta"},
+                    new int[]{8, 22, 22, 13, 16, 32, 12, 10, 16});
+
+            int numeroFila = 1;
+            for (Socio socio : socios) {
+                Row fila = hojaSocios.createRow(numeroFila++);
+                fila.createCell(0).setCellValue(socio.getId().doubleValue());
+                fila.createCell(1).setCellValue(socio.getApellidos());
+                fila.createCell(2).setCellValue(socio.getNombres());
+                fila.createCell(3).setCellValue(socio.getDni());
+                fila.createCell(4).setCellValue(socio.getTelefono());
+                fila.createCell(5).setCellValue(socio.getDomicilio());
+                fila.createCell(6).setCellValue(socio.isAptoFisico() ? "Sí" : "No");
+                fila.createCell(7).setCellValue(socio.isActivo() ? "Sí" : "No");
+                escribirFecha(fila, 8, socio.getFechaAlta(), estiloFecha);
+            }
+            hojaSocios.createFreezePane(0, 1);
+            hojaSocios.setAutoFilter(new CellRangeAddress(0, Math.max(numeroFila - 1, 0), 0, 8));
+
+            // Hoja 2: todos los pagos
+            Sheet hojaPagos = libro.createSheet("Pagos");
+            escribirEncabezado(hojaPagos, estiloEncabezado,
+                    new String[]{"ID pago", "ID socio", "DNI", "Apellidos", "Nombres", "Mes pagado",
+                            "Fecha de pago", "Medio de pago", "Monto"},
+                    new int[]{10, 10, 13, 22, 22, 18, 16, 18, 16});
+
+            numeroFila = 1;
+            for (Pago pago : pagos) {
+                Socio socio = pago.getSocio();
+                Row fila = hojaPagos.createRow(numeroFila++);
+                fila.createCell(0).setCellValue(pago.getId().doubleValue());
+                fila.createCell(1).setCellValue(socio.getId().doubleValue());
+                fila.createCell(2).setCellValue(socio.getDni());
+                fila.createCell(3).setCellValue(socio.getApellidos());
+                fila.createCell(4).setCellValue(socio.getNombres());
+                escribirFecha(fila, 5, pago.getMesPagado(), estiloMes);
+                escribirFecha(fila, 6, pago.getFechaPago(), estiloFecha);
+                fila.createCell(7).setCellValue(nombreMedio(pago.getMedioPago()));
+
+                Cell monto = fila.createCell(8);
+                monto.setCellValue(pago.getMonto().doubleValue());
+                monto.setCellStyle(estiloMonto);
+            }
+            hojaPagos.createFreezePane(0, 1);
+            hojaPagos.setAutoFilter(new CellRangeAddress(0, Math.max(numeroFila - 1, 0), 0, 8));
+
+            libro.write(salida);
+            return salida.toByteArray();
+        } catch (IOException e) {
+            throw new IllegalStateException("No se pudo generar la copia de seguridad.", e);
+        }
     }
 }

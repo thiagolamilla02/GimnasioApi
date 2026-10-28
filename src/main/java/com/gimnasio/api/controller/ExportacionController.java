@@ -50,4 +50,10 @@ public class ExportacionController {
                 .contentType(EXCEL)
                 .body(archivo);
     }
+
+    @GetMapping("/backup/exportar")
+    public ResponseEntity<byte[]> exportarCopiaDeSeguridad() {
+        byte[] archivo = exportacionServ.exportarCopiaDeSeguridad();
+        return descarga(archivo, "copia-de-seguridad-" + LocalDate.now(ZONA) + ".xlsx");
+    }
 }
