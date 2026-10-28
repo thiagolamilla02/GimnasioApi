@@ -14,6 +14,7 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.security.web.csrf.CsrfFilter;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -26,7 +27,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, LimitadorDeIntentos limitador) throws Exception {
 
         // CSRF: el token viaja en la cookie XSRF-TOKEN y el front lo reenvia en la cabecera X-XSRF-TOKEN.
         // Con el atributo "_csrf" el token se carga en cada peticion (asi la cookie llega desde la primera).
@@ -45,6 +46,8 @@ public class SecurityConfig {
                         .csrfTokenRequestHandler(manejadorCsrf))
 
                 .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class)
+
+                .addFilterBefore(new LimitadorDeLoginFilter(limitador), UsernamePasswordAuthenticationFilter.class)
 
                 .authorizeHttpRequests(auth -> auth
                         // Lo unico publico: la pagina de login y sus archivos

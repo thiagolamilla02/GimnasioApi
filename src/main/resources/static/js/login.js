@@ -36,6 +36,8 @@ formLogin.addEventListener("submit", async (evento) => {
             inputClave.focus();
         } else if (respuesta.status === 403) {
             mostrarErrorLogin("La página caducó. Recargala (Ctrl+F5) e intentá de nuevo.");
+        } else if (respuesta.status === 429) {
+            mostrarErrorLogin("Demasiados intentos fallidos. Esperá 15 minutos e intentá de nuevo.");gi
         } else {
             mostrarErrorLogin("No se pudo iniciar sesión (código " + respuesta.status + ").");
         }
