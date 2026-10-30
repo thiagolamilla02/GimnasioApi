@@ -6,3 +6,8 @@ build
 *.xlsx
 *.xls
 *.csv
+gitleaks
+gitleaks.exe
+gitleaks-report*
+gitleaks/
+gitleaks.exe

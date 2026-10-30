@@ -44,3 +44,9 @@ data/
 # Configuración local y secretos
 application-local.properties
 .env
+
+gitleaks
+gitleaks.exe
+gitleaks-report*
+gitleaks/
+gitleaks.exe
